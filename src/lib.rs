@@ -1,3 +1,3 @@
-mod linker;
-mod ffi;
 pub mod core;
+mod ffi;
+mod linker;

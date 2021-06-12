@@ -1,4 +1,3 @@
-use std::ffi::CString;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::ptr::NonNull;
@@ -6,18 +5,19 @@ use std::ptr::NonNull;
 use crate::ffi;
 use crate::linker::DynamicLibrary;
 
-struct DispatchLoaderInstance {
-    vk_get_instance_proc_addr: ffi::PFN_vkGetInstanceProcAddr,
-    vk_enumerate_instance_version: Option<ffi::PFN_vkEnumerateInstanceVersion>,
-    vk_create_instance: ffi::PFN_vkCreateInstance,
-    vk_destroy_instance: ffi::PFN_vkDestroyInstance,
-}
-
 pub struct Instance {
     handle: NonNull<ffi::OpaqueInstance>,
     dispatch_loader: DispatchLoaderInstance,
     _lib: DynamicLibrary,
     _marker: PhantomData<ffi::OpaqueInstance>,
+}
+
+#[derive(Default)]
+struct DispatchLoaderInstance {
+    vk_get_instance_proc_addr: Option<ffi::PFN_vkGetInstanceProcAddr>,
+    vk_enumerate_instance_version: Option<ffi::PFN_vkEnumerateInstanceVersion>,
+    vk_create_instance: Option<ffi::PFN_vkCreateInstance>,
+    vk_destroy_instance: Option<ffi::PFN_vkDestroyInstance>,
 }
 
 #[derive(Default)]
@@ -34,14 +34,11 @@ pub struct ApiVersion(u32);
 
 impl Instance {
     pub fn new() -> Self {
-        let lib = DynamicLibrary::new("vulkan-1.dll");
+        let lib = DynamicLibrary::new("libvulkan.so");
         let vk_get_instance_proc_addr: ffi::PFN_vkGetInstanceProcAddr =
             unsafe { std::mem::transmute(lib.get_proc_addr("vkGetInstanceProcAddr")) };
-        let vk_create_instance: ffi::PFN_vkCreateInstance = unsafe {
-            vk_get_instance_proc_addr(std::ptr::null_mut(), "vkCreateInstance\0".as_ptr().cast())
-                .map(|pfn| std::mem::transmute(pfn))
-                .expect("Could not get address of Vulkan command.")
-        };
+
+        let mut dispatch_loader = DispatchLoaderInstance::new(vk_get_instance_proc_addr);
 
         let create_info = ffi::InstanceCreateInfo {
             s_type: ffi::StructureType::InstanceCreateInfo,
@@ -55,27 +52,18 @@ impl Instance {
         };
 
         let mut handle = MaybeUninit::uninit();
-        let result =
-            unsafe { vk_create_instance(&create_info, std::ptr::null(), handle.as_mut_ptr()) };
+        let result = unsafe {
+            (dispatch_loader.vk_create_instance.unwrap())(
+                &create_info,
+                std::ptr::null(),
+                handle.as_mut_ptr(),
+            )
+        };
 
         if result == 0 {
             let handle = unsafe { handle.assume_init() };
-            let vk_enumerate_instance_version: Option<ffi::PFN_vkEnumerateInstanceVersion> = unsafe {
-                vk_get_instance_proc_addr(handle, "vkEnumerateInstanceVersion\0".as_ptr().cast())
-                    .map(|pfn| std::mem::transmute(pfn))
-            };
-            let vk_destroy_instance: ffi::PFN_vkDestroyInstance = unsafe {
-                vk_get_instance_proc_addr(handle, "vkDestroyInstance\0".as_ptr().cast())
-                    .map(|pfn| std::mem::transmute(pfn))
-                    .expect("Could not get address of Vulkan command.")
-            };
+            unsafe { dispatch_loader.load(handle) };
             println!("Successfully created instance: {:p}", handle);
-            let dispatch_loader = DispatchLoaderInstance {
-                vk_get_instance_proc_addr,
-                vk_enumerate_instance_version,
-                vk_create_instance,
-                vk_destroy_instance,
-            };
 
             Self {
                 handle: unsafe { NonNull::new_unchecked(handle) },
@@ -99,21 +87,47 @@ impl Instance {
                 }
             })
     }
-
-    fn _get_proc_addr(&self, name: &str) -> Option<ffi::PFN_vkVoidFunction> {
-        let name_c = CString::new(name).unwrap();
-        unsafe {
-            (self.dispatch_loader.vk_get_instance_proc_addr)(self.handle.as_ptr(), name_c.as_ptr())
-        }
-    }
 }
 
 impl Drop for Instance {
     fn drop(&mut self) {
         println!("Dropped Instance");
         unsafe {
-            (self.dispatch_loader.vk_destroy_instance)(self.handle.as_ptr(), std::ptr::null());
+            (self.dispatch_loader.vk_destroy_instance.unwrap())(
+                self.handle.as_ptr(),
+                std::ptr::null(),
+            );
         }
+    }
+}
+
+impl DispatchLoaderInstance {
+    fn new(vk_get_instance_proc_addr: ffi::PFN_vkGetInstanceProcAddr) -> Self {
+        Self {
+            vk_get_instance_proc_addr: Some(vk_get_instance_proc_addr),
+            vk_enumerate_instance_version: unsafe {
+                vk_get_instance_proc_addr(
+                    std::ptr::null_mut(),
+                    "vkEnumerateInstanceVersion\0".as_ptr().cast(),
+                )
+                .map(|pfn| std::mem::transmute(pfn))
+            },
+            vk_create_instance: unsafe {
+                vk_get_instance_proc_addr(
+                    std::ptr::null_mut(),
+                    "vkCreateInstance\0".as_ptr().cast(),
+                )
+                .map(|pfn| std::mem::transmute(pfn))
+            },
+            ..Default::default()
+        }
+    }
+
+    unsafe fn load(&mut self, instance: *mut ffi::OpaqueInstance) {
+        let vk_get_instance_proc_addr = self.vk_get_instance_proc_addr.unwrap();
+        self.vk_destroy_instance =
+            vk_get_instance_proc_addr(instance, "vkDestroyInstance\0".as_ptr().cast())
+                .map(|pfn| std::mem::transmute(pfn));
     }
 }
 
