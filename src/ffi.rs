@@ -29,13 +29,13 @@ type InstanceCreateFlags = Flags;
 
 #[repr(C)]
 pub struct ApplicationInfo {
-    s_type: StructureType,
-    p_next: *const c_void,
-    p_application_name: *const i8,
-    application_version: u32,
-    p_engine_name: *const i8,
-    engine_version: u32,
-    api_version: u32,
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub p_application_name: *const i8,
+    pub application_version: u32,
+    pub p_engine_name: *const i8,
+    pub engine_version: u32,
+    pub api_version: u32,
 }
 
 #[repr(C)]

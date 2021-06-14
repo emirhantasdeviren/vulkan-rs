@@ -1,3 +1,4 @@
+use std::ffi::CString;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::ptr::NonNull;
@@ -29,22 +30,60 @@ pub struct ApplicationInfo {
     pub api_version: ApiVersion,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct ApiVersion(u32);
 
 impl Instance {
-    pub fn new() -> Self {
+    pub fn new(
+        application_info: Option<&ApplicationInfo>,
+        _layers: Option<&[&str]>,
+        _extensions: Option<&[&str]>,
+    ) -> Self {
         let lib = DynamicLibrary::new("libvulkan.so");
         let vk_get_instance_proc_addr: ffi::PFN_vkGetInstanceProcAddr =
             unsafe { std::mem::transmute(lib.get_proc_addr("vkGetInstanceProcAddr")) };
-
         let mut dispatch_loader = DispatchLoaderInstance::new(vk_get_instance_proc_addr);
+
+        let names_c = application_info.map(|i| {
+            (
+                i.application_name
+                    .as_ref()
+                    .map(|name| CString::new(name.as_bytes()).unwrap()),
+                i.engine_name
+                    .as_ref()
+                    .map(|name| CString::new(name.as_bytes()).unwrap()),
+            )
+        });
+
+        let app_info_c =
+            application_info
+                .zip(names_c.as_ref())
+                .map(|(i, (app_name, engine_name))| {
+                    let p_application_name = app_name
+                        .as_ref()
+                        .map_or(std::ptr::null(), |name| name.as_ptr());
+                    let p_engine_name = engine_name
+                        .as_ref()
+                        .map_or(std::ptr::null(), |name| name.as_ptr());
+
+                    ffi::ApplicationInfo {
+                        s_type: ffi::StructureType::ApplicationInfo,
+                        p_next: std::ptr::null(),
+                        p_application_name,
+                        application_version: i.application_version.0,
+                        p_engine_name,
+                        engine_version: i.engine_version.0,
+                        api_version: i.api_version.0,
+                    }
+                });
+
+        let p_application_info = app_info_c.as_ref().map_or(std::ptr::null(), |i| i);
 
         let create_info = ffi::InstanceCreateInfo {
             s_type: ffi::StructureType::InstanceCreateInfo,
             p_next: std::ptr::null(),
             flags: 0,
-            p_application_info: std::ptr::null(),
+            p_application_info,
             enabled_layer_count: 0,
             pp_enabled_layer_names: std::ptr::null(),
             enabled_extension_count: 0,
