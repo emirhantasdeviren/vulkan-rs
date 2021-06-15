@@ -13,12 +13,18 @@ pub struct Instance {
     _marker: PhantomData<ffi::OpaqueInstance>,
 }
 
+pub struct PhysicalDevice<'a> {
+    handle: NonNull<ffi::OpaquePhysicalDevice>,
+    _marker: PhantomData<(ffi::OpaquePhysicalDevice, &'a Instance)>,
+}
+
 #[derive(Default)]
 struct DispatchLoaderInstance {
     vk_get_instance_proc_addr: Option<ffi::PFN_vkGetInstanceProcAddr>,
     vk_enumerate_instance_version: Option<ffi::PFN_vkEnumerateInstanceVersion>,
     vk_create_instance: Option<ffi::PFN_vkCreateInstance>,
     vk_destroy_instance: Option<ffi::PFN_vkDestroyInstance>,
+    vk_enumerate_physical_devices: Option<ffi::PFN_vkEnumeratePhysicalDevices>,
 }
 
 #[derive(Default)]
@@ -115,6 +121,46 @@ impl Instance {
         }
     }
 
+    pub fn enumerate_physical_devices(&self) -> Vec<PhysicalDevice<'_>> {
+        let mut physical_device_count = MaybeUninit::uninit();
+        let vk_enumerate_physical_devices =
+            self.dispatch_loader.vk_enumerate_physical_devices.unwrap();
+        let result = unsafe {
+            vk_enumerate_physical_devices(
+                self.handle.as_ptr(),
+                physical_device_count.as_mut_ptr(),
+                std::ptr::null_mut(),
+            )
+        };
+
+        if result == 0 {
+            let capacity = unsafe { physical_device_count.assume_init() };
+            let mut physical_devices = Vec::with_capacity(capacity as usize);
+            let mut new_len = MaybeUninit::uninit();
+            let result = unsafe {
+                vk_enumerate_physical_devices(
+                    self.handle.as_ptr(),
+                    new_len.as_mut_ptr(),
+                    physical_devices.as_mut_ptr(),
+                )
+            };
+            if result == 0 {
+                unsafe { physical_devices.set_len(new_len.assume_init() as usize) };
+                physical_devices
+                    .into_iter()
+                    .map(|p| PhysicalDevice {
+                        handle: unsafe { NonNull::new_unchecked(p) },
+                        _marker: PhantomData,
+                    })
+                    .collect()
+            } else {
+                panic!("Could not write phsyical devices to Vec. {}", result);
+            }
+        } else {
+            panic!("Could not get physical device count.");
+        }
+    }
+
     pub fn version(&self) -> Option<ApiVersion> {
         self.dispatch_loader
             .vk_enumerate_instance_version
@@ -166,6 +212,9 @@ impl DispatchLoaderInstance {
         let vk_get_instance_proc_addr = self.vk_get_instance_proc_addr.unwrap();
         self.vk_destroy_instance =
             vk_get_instance_proc_addr(instance, "vkDestroyInstance\0".as_ptr().cast())
+                .map(|pfn| std::mem::transmute(pfn));
+        self.vk_enumerate_physical_devices =
+            vk_get_instance_proc_addr(instance, "vkEnumeratePhysicalDevices\0".as_ptr().cast())
                 .map(|pfn| std::mem::transmute(pfn));
     }
 }
