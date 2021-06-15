@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::ptr::NonNull;
@@ -15,6 +15,7 @@ pub struct Instance {
 
 pub struct PhysicalDevice<'a> {
     handle: NonNull<ffi::OpaquePhysicalDevice>,
+    dispatch_loader: DispatchLoaderPhysicalDevice,
     _marker: PhantomData<(ffi::OpaquePhysicalDevice, &'a Instance)>,
 }
 
@@ -27,6 +28,18 @@ struct DispatchLoaderInstance {
     vk_enumerate_physical_devices: Option<ffi::PFN_vkEnumeratePhysicalDevices>,
 }
 
+struct DispatchLoaderPhysicalDevice {
+    vk_get_physical_device_properties: ffi::PFN_vkGetPhysicalDeviceProperties,
+}
+
+pub enum PhysicalDeviceType {
+    Other,
+    IntegratedGpu,
+    DiscreteGpu,
+    VirtualGpu,
+    Cpu,
+}
+
 #[derive(Default)]
 pub struct ApplicationInfo {
     pub application_name: Option<String>,
@@ -34,6 +47,11 @@ pub struct ApplicationInfo {
     pub engine_name: Option<String>,
     pub engine_version: ApiVersion,
     pub api_version: ApiVersion,
+}
+
+pub struct PhysicalDeviceProperties {
+    pub device_type: PhysicalDeviceType,
+    pub device_name: String,
 }
 
 #[derive(Default, Clone, Copy)]
@@ -150,6 +168,7 @@ impl Instance {
                     .into_iter()
                     .map(|p| PhysicalDevice {
                         handle: unsafe { NonNull::new_unchecked(p) },
+                        dispatch_loader: DispatchLoaderPhysicalDevice::new(self),
                         _marker: PhantomData,
                     })
                     .collect()
@@ -186,6 +205,36 @@ impl Drop for Instance {
     }
 }
 
+impl<'a> PhysicalDevice<'a> {
+    pub fn properties(&self) -> PhysicalDeviceProperties {
+        let mut props = MaybeUninit::uninit();
+        unsafe {
+            (self.dispatch_loader.vk_get_physical_device_properties)(
+                self.handle.as_ptr(),
+                props.as_mut_ptr(),
+            )
+        };
+        let props = unsafe { props.assume_init() };
+        let device_type = match props.device_type {
+            ffi::PhysicalDeviceType::Other => self::PhysicalDeviceType::Other,
+            ffi::PhysicalDeviceType::IntegratedGpu => self::PhysicalDeviceType::IntegratedGpu,
+            ffi::PhysicalDeviceType::DiscreteGpu => self::PhysicalDeviceType::DiscreteGpu,
+            ffi::PhysicalDeviceType::VirtualGpu => self::PhysicalDeviceType::VirtualGpu,
+            ffi::PhysicalDeviceType::Cpu => self::PhysicalDeviceType::Cpu,
+            ffi::PhysicalDeviceType::MaxEnum => panic!("MAX ENUM?"),
+        };
+        // NOTE: Since `device_name` is UTF-8 null-terminated string according to Vulkan manual.
+        // We don't have to check the validation of UTF-8. Find a better way.
+        let device_name_cstr = unsafe { CStr::from_ptr(props.device_name.as_ptr()) };
+        let device_name = String::from(device_name_cstr.to_str().unwrap());
+
+        PhysicalDeviceProperties {
+            device_type,
+            device_name,
+        }
+    }
+}
+
 impl DispatchLoaderInstance {
     fn new(vk_get_instance_proc_addr: ffi::PFN_vkGetInstanceProcAddr) -> Self {
         Self {
@@ -216,6 +265,26 @@ impl DispatchLoaderInstance {
         self.vk_enumerate_physical_devices =
             vk_get_instance_proc_addr(instance, "vkEnumeratePhysicalDevices\0".as_ptr().cast())
                 .map(|pfn| std::mem::transmute(pfn));
+    }
+}
+
+impl DispatchLoaderPhysicalDevice {
+    fn new(instance: &Instance) -> Self {
+        let vk_get_instance_proc_addr = instance.dispatch_loader.vk_get_instance_proc_addr.unwrap();
+
+        // SAFETY: Since we have reference of `self::Instance`, which has a valid instance handle
+        // We can safely receive function addresses.
+        // String typos are my responsibility.
+        unsafe {
+            Self {
+                vk_get_physical_device_properties: vk_get_instance_proc_addr(
+                    instance.handle.as_ptr(),
+                    "vkGetPhysicalDeviceProperties\0".as_ptr().cast(),
+                )
+                .map(|pfn| std::mem::transmute(pfn))
+                .unwrap(),
+            }
+        }
     }
 }
 
