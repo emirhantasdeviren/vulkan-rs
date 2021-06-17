@@ -50,6 +50,13 @@ pub enum PhysicalDeviceType {
     MaxEnum = 0x7FFFFFFF,
 }
 
+#[repr(C)]
+pub struct Extent3D {
+    width: u32,
+    height: u32,
+    depth: u32,
+}
+
 type PFN_vkAllocationFunction = unsafe extern "system" fn(
     p_user_data: *mut c_void,
     size: usize,
@@ -108,9 +115,15 @@ pub type PFN_vkGetPhysicalDeviceProperties = unsafe extern "system" fn(
     physical_device: *mut OpaquePhysicalDevice,
     p_properties: *mut PhysicalDeviceProperties,
 );
+pub type PFN_vkGetPhysicalDeviceQueueFamilyProperties = unsafe extern "system" fn(
+    physical_device: *mut OpaquePhysicalDevice,
+    p_queue_family_property_count: *mut u32,
+    p_queue_family_properties: *mut QueueFamilyProperties,
+);
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;
+pub type QueueFlags = Flags;
 
 #[repr(C)]
 pub struct ApplicationInfo {
@@ -256,7 +269,7 @@ pub struct PhysicalDeviceSparseProperties {
 
 #[repr(C)]
 pub struct PhysicalDeviceProperties {
-    api_version: u32,
+    pub api_version: u32,
     driver_version: u32,
     vendor_id: u32,
     device_id: u32,
@@ -265,4 +278,12 @@ pub struct PhysicalDeviceProperties {
     pipeline_cache_uuid: [u8; 16],
     limits: PhysicalDeviceLimits,
     sparse_properties: PhysicalDeviceSparseProperties,
+}
+
+#[repr(C)]
+pub struct QueueFamilyProperties {
+    pub queue_flags: QueueFlags,
+    pub queue_count: u32,
+    timestamp_valid_bits: u32,
+    min_image_transfer_granularity: Extent3D,
 }

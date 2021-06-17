@@ -30,6 +30,8 @@ struct DispatchLoaderInstance {
 
 struct DispatchLoaderPhysicalDevice {
     vk_get_physical_device_properties: ffi::PFN_vkGetPhysicalDeviceProperties,
+    vk_get_physical_device_queue_family_properties:
+        ffi::PFN_vkGetPhysicalDeviceQueueFamilyProperties,
 }
 
 pub enum PhysicalDeviceType {
@@ -50,8 +52,14 @@ pub struct ApplicationInfo {
 }
 
 pub struct PhysicalDeviceProperties {
+    pub api_version: ApiVersion,
     pub device_type: PhysicalDeviceType,
     pub device_name: String,
+}
+
+pub struct QueueFamilyProperties {
+    pub queue_flags: ffi::QueueFlags,
+    pub queue_count: u32,
 }
 
 #[derive(Default, Clone, Copy)]
@@ -63,7 +71,14 @@ impl Instance {
         _layers: Option<&[&str]>,
         _extensions: Option<&[&str]>,
     ) -> Self {
-        let lib = DynamicLibrary::new("libvulkan.so");
+        let file_name = if cfg!(unix) {
+            "libvulkan.so"
+        } else if cfg!(windows) {
+            "vulkan-1.dll"
+        } else {
+            ""
+        };
+        let lib = DynamicLibrary::new(file_name);
         let vk_get_instance_proc_addr: ffi::PFN_vkGetInstanceProcAddr =
             unsafe { std::mem::transmute(lib.get_proc_addr("vkGetInstanceProcAddr")) };
         let mut dispatch_loader = DispatchLoaderInstance::new(vk_get_instance_proc_addr);
@@ -229,9 +244,44 @@ impl<'a> PhysicalDevice<'a> {
         let device_name = String::from(device_name_cstr.to_str().unwrap());
 
         PhysicalDeviceProperties {
+            api_version: ApiVersion(props.api_version),
             device_type,
             device_name,
         }
+    }
+
+    pub fn queue_family_properties(&self) -> Vec<QueueFamilyProperties> {
+        let mut queue_family_count = MaybeUninit::uninit();
+        unsafe {
+            (self
+                .dispatch_loader
+                .vk_get_physical_device_queue_family_properties)(
+                self.handle.as_ptr(),
+                queue_family_count.as_mut_ptr(),
+                std::ptr::null_mut(),
+            )
+        };
+        let capacity = unsafe { queue_family_count.assume_init() };
+        let mut props_ffi = Vec::with_capacity(capacity as usize);
+        unsafe {
+            (self
+                .dispatch_loader
+                .vk_get_physical_device_queue_family_properties)(
+                self.handle.as_ptr(),
+                queue_family_count.as_mut_ptr(),
+                props_ffi.as_mut_ptr(),
+            )
+        };
+        let new_len = unsafe { queue_family_count.assume_init() };
+        unsafe { props_ffi.set_len(new_len as usize) };
+
+        props_ffi
+            .into_iter()
+            .map(|p| QueueFamilyProperties {
+                queue_flags: p.queue_flags,
+                queue_count: p.queue_count,
+            })
+            .collect()
     }
 }
 
@@ -283,8 +333,32 @@ impl DispatchLoaderPhysicalDevice {
                 )
                 .map(|pfn| std::mem::transmute(pfn))
                 .unwrap(),
+                vk_get_physical_device_queue_family_properties: vk_get_instance_proc_addr(
+                    instance.handle.as_ptr(),
+                    "vkGetPhysicalDeviceQueueFamilyProperties\0".as_ptr().cast(),
+                )
+                .map(|pfn| std::mem::transmute(pfn))
+                .unwrap(),
             }
         }
+    }
+}
+
+impl QueueFamilyProperties {
+    pub fn graphics(&self) -> bool {
+        (self.queue_flags & 0x00000001) != 0
+    }
+
+    pub fn compute(&self) -> bool {
+        (self.queue_flags & 0x00000002) != 0
+    }
+
+    pub fn transfer(&self) -> bool {
+        (self.queue_flags & 0x00000004) != 0
+    }
+
+    pub fn sparse_binding(&self) -> bool {
+        (self.queue_flags & 0x00000008) != 0
     }
 }
 
