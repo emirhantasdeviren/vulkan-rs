@@ -19,9 +19,38 @@ pub struct OpaquePhysicalDevice {
 }
 
 #[repr(C)]
+pub struct OpaqueDevice {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+#[repr(C)]
+pub enum Result {
+    Success = 0,
+    NotReady = 1,
+    Timeout = 2,
+    EventSet = 3,
+    EventReset = 4,
+    Incomplete = 5,
+    OutOfHostMemory = -1,
+    OutOfDeviceMemory = -2,
+    InitializationFailed = -3,
+    DeviceLost = -4,
+    MemoryaMapFailed = -5,
+    LayerNotPresent = -6,
+    ExtensionNotPresent = -7,
+    FeatureNotPresent = -8,
+    IncompatibleDriver = -9,
+    TooManyObjects = -10,
+}
+
+#[repr(C)]
 pub enum StructureType {
     ApplicationInfo = 0,
     InstanceCreateInfo = 1,
+    DeviceQueueCreateInfo = 2,
+    DeviceCreateInfo = 3,
 }
 
 #[repr(C)]
@@ -97,20 +126,29 @@ pub struct AllocationCallbacks {
     pfn_internal_free: PFN_vkInternalFreeNotification,
 }
 
-pub type PFN_vkGetInstanceProcAddr =
-    unsafe extern "system" fn(*mut OpaqueInstance, *const i8) -> Option<PFN_vkVoidFunction>;
-pub type PFN_vkEnumerateInstanceVersion = unsafe extern "system" fn(*mut u32) -> i32;
+pub type PFN_vkGetInstanceProcAddr = unsafe extern "system" fn(
+    instance: *mut OpaqueInstance,
+    p_name: *const i8,
+) -> Option<PFN_vkVoidFunction>;
+pub type PFN_vkGetDeviceProcAddr = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    p_name: *const i8,
+) -> Option<PFN_vkVoidFunction>;
+pub type PFN_vkEnumerateInstanceVersion = unsafe extern "system" fn(*mut u32) -> self::Result;
 pub type PFN_vkCreateInstance = unsafe extern "system" fn(
     p_create_info: *const InstanceCreateInfo,
     p_allocator: *const AllocationCallbacks,
     p_instance: *mut *mut OpaqueInstance,
-) -> i32;
-pub type PFN_vkDestroyInstance = unsafe extern "system" fn(*mut OpaqueInstance, *const c_void);
+) -> self::Result;
+pub type PFN_vkDestroyInstance = unsafe extern "system" fn(
+    instance: *mut OpaqueInstance,
+    p_allocator: *const AllocationCallbacks,
+);
 pub type PFN_vkEnumeratePhysicalDevices = unsafe extern "system" fn(
     instance: *mut OpaqueInstance,
     pPhysicalDeviceCount: *mut u32,
     pPhysicalDevices: *mut *mut OpaquePhysicalDevice,
-) -> i32;
+) -> self::Result;
 pub type PFN_vkGetPhysicalDeviceProperties = unsafe extern "system" fn(
     physical_device: *mut OpaquePhysicalDevice,
     p_properties: *mut PhysicalDeviceProperties,
@@ -120,10 +158,20 @@ pub type PFN_vkGetPhysicalDeviceQueueFamilyProperties = unsafe extern "system" f
     p_queue_family_property_count: *mut u32,
     p_queue_family_properties: *mut QueueFamilyProperties,
 );
+pub type PFN_vkCreateDevice = unsafe extern "system" fn(
+    physical_device: *mut OpaquePhysicalDevice,
+    p_create_info: *const DeviceCreateInfo,
+    p_allocator: *const AllocationCallbacks,
+    p_device: *mut *mut OpaqueDevice,
+) -> self::Result;
+pub type PFN_vkDestroyDevice =
+    unsafe extern "system" fn(device: *mut OpaqueDevice, p_allocator: *const AllocationCallbacks);
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;
 pub type QueueFlags = Flags;
+type DeviceQueueCreateFlags = Flags;
+type DeviceCreateFlags = Flags;
 
 #[repr(C)]
 pub struct ApplicationInfo {
@@ -146,6 +194,65 @@ pub struct InstanceCreateInfo {
     pub pp_enabled_layer_names: *const *const i8,
     pub enabled_extension_count: u32,
     pub pp_enabled_extension_names: *const *const i8,
+}
+
+#[repr(C)]
+pub struct PhysicalDeviceFeatures {
+    robust_buffer_access: Bool32,
+    full_draw_index_uint32: Bool32,
+    image_cube_array: Bool32,
+    independent_blend: Bool32,
+    geometry_shader: Bool32,
+    tessellation_shader: Bool32,
+    sample_rate_shading: Bool32,
+    dual_src_blend: Bool32,
+    logic_op: Bool32,
+    multi_draw_indirect: Bool32,
+    draw_indirect_first_instance: Bool32,
+    depth_clamp: Bool32,
+    depth_bias_clamp: Bool32,
+    fill_mode_non_solid: Bool32,
+    depth_bounds: Bool32,
+    wide_lines: Bool32,
+    large_points: Bool32,
+    alpha_to_one: Bool32,
+    multi_viewport: Bool32,
+    sampler_anisotropy: Bool32,
+    texture_compression_etc2: Bool32,
+    texture_compression_astc_ldr: Bool32,
+    texture_compression_bc: Bool32,
+    occlusion_query_precise: Bool32,
+    pipeline_statistics_query: Bool32,
+    vertex_pipeline_stores_and_atomics: Bool32,
+    fragment_stores_and_atomics: Bool32,
+    shader_tessellation_and_geometry_point_size: Bool32,
+    shader_image_gather_extended: Bool32,
+    shader_storage_image_extended_formats: Bool32,
+    shader_storage_image_multisample: Bool32,
+    shader_storage_image_read_without_format: Bool32,
+    shader_storage_image_write_without_format: Bool32,
+    shader_uniform_buffer_array_dynamic_indexing: Bool32,
+    shader_sampled_image_array_dynamic_indexing: Bool32,
+    shader_storage_buffer_array_dynamic_indexing: Bool32,
+    shader_storage_image_array_dynamic_indexing: Bool32,
+    shader_clip_distance: Bool32,
+    shader_cull_distance: Bool32,
+    shader_float64: Bool32,
+    shader_int64: Bool32,
+    shader_int16: Bool32,
+    shader_resource_residency: Bool32,
+    shader_resource_min_lod: Bool32,
+    sparse_binding: Bool32,
+    sparse_residency_buffer: Bool32,
+    sparse_residency_image_2d: Bool32,
+    sparse_residency_image_3d: Bool32,
+    sparse_residency2_samples: Bool32,
+    sparse_residency4_samples: Bool32,
+    sparse_residency8_samples: Bool32,
+    sparse_residency16_samples: Bool32,
+    sparse_residency_aliased: Bool32,
+    variable_multisample_rate: Bool32,
+    inherited_queries: Bool32,
 }
 
 #[repr(C)]
@@ -286,4 +393,28 @@ pub struct QueueFamilyProperties {
     pub queue_count: u32,
     timestamp_valid_bits: u32,
     min_image_transfer_granularity: Extent3D,
+}
+
+#[repr(C)]
+pub struct DeviceQueueCreateInfo {
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub flags: DeviceQueueCreateFlags,
+    pub queue_family_index: u32,
+    pub queue_count: u32,
+    pub p_queue_priorities: *const f32,
+}
+
+#[repr(C)]
+pub struct DeviceCreateInfo {
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub flags: DeviceCreateFlags,
+    pub queue_create_info_count: u32,
+    pub p_queue_create_infos: *const DeviceQueueCreateInfo,
+    pub enabled_layer_count: u32,
+    pub pp_enabled_layer_names: *const *const i8,
+    pub enabled_extension_count: u32,
+    pub pp_enabled_extension_names: *const *const i8,
+    pub p_enabled_features: *const PhysicalDeviceFeatures,
 }
