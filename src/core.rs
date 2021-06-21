@@ -25,6 +25,11 @@ pub struct Device<'a> {
     _marker: PhantomData<(ffi::OpaqueDevice, &'a Instance)>,
 }
 
+pub struct Queue<'a> {
+    handle: NonNull<ffi::OpaqueQueue>,
+    _marker: PhantomData<(ffi::OpaqueQueue, &'a Device<'a>)>,
+}
+
 #[derive(Default)]
 struct DispatchLoaderInstance {
     vk_get_instance_proc_addr: Option<ffi::PFN_vkGetInstanceProcAddr>,
@@ -44,6 +49,7 @@ struct DispatchLoaderPhysicalDevice {
 
 struct DispatchLoaderDevice {
     vk_destroy_device: ffi::PFN_vkDestroyDevice,
+    vk_get_device_queue: ffi::PFN_vkGetDeviceQueue,
 }
 
 #[derive(PartialEq, Eq)]
@@ -300,7 +306,7 @@ impl<'a> PhysicalDevice<'a> {
         &self,
         queue_family_indices: &[usize],
         priorities: &[&[f32]],
-    ) -> Device<'_> {
+    ) -> Device<'a> {
         let queue_create_infos: Vec<ffi::DeviceQueueCreateInfo> = queue_family_indices
             .iter()
             .zip(priorities.iter())
@@ -351,6 +357,25 @@ impl<'a> PhysicalDevice<'a> {
             }
         } else {
             panic!("Could not create logical device. {:?}", result);
+        }
+    }
+}
+
+impl<'a> Device<'a> {
+    pub fn get_device_queue(&self, queue_family_index: usize, queue_index: usize) -> Queue<'_> {
+        let mut handle = MaybeUninit::uninit();
+        unsafe {
+            (self.dispatch_loader.vk_get_device_queue)(
+                self.handle.as_ptr(),
+                queue_family_index as u32,
+                queue_index as u32,
+                handle.as_mut_ptr(),
+            );
+        }
+
+        Queue {
+            handle: unsafe { NonNull::new_unchecked(handle.assume_init()) },
+            _marker: PhantomData,
         }
     }
 }
@@ -443,6 +468,12 @@ impl DispatchLoaderDevice {
             vk_destroy_device: vk_get_device_proc_addr(
                 device_handle,
                 "vkDestroyDevice\0".as_ptr().cast(),
+            )
+            .map(|pfn| std::mem::transmute(pfn))
+            .unwrap(),
+            vk_get_device_queue: vk_get_device_proc_addr(
+                device_handle,
+                "vkGetDeviceQueue\0".as_ptr().cast(),
             )
             .map(|pfn| std::mem::transmute(pfn))
             .unwrap(),

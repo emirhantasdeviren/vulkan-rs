@@ -26,4 +26,5 @@ fn main() {
         .expect("Could not find suitable GPU.");
 
     let device = physical_device.create_device(&[0], &[&[1.0f32]]);
+    let _queue = device.get_device_queue(0, 0);
 }

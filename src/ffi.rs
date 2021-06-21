@@ -1,3 +1,5 @@
+#![allow(dead_code, non_camel_case_types)]
+
 use std::ffi::c_void;
 use std::marker::{PhantomData, PhantomPinned};
 
@@ -20,6 +22,12 @@ pub struct OpaquePhysicalDevice {
 
 #[repr(C)]
 pub struct OpaqueDevice {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+pub struct OpaqueQueue {
     _data: [u8; 0],
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
@@ -166,6 +174,12 @@ pub type PFN_vkCreateDevice = unsafe extern "system" fn(
 ) -> self::Result;
 pub type PFN_vkDestroyDevice =
     unsafe extern "system" fn(device: *mut OpaqueDevice, p_allocator: *const AllocationCallbacks);
+pub type PFN_vkGetDeviceQueue = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    queue_family_index: u32,
+    queue_index: u32,
+    p_queue: *mut *mut OpaqueQueue,
+);
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;
