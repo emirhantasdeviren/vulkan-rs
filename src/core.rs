@@ -6,6 +6,10 @@ use std::ptr::NonNull;
 use crate::ffi;
 use crate::linker::DynamicLibrary;
 
+pub const KHR_SURFACE_EXTENSION_NAME: &str = "VK_KHR_surface";
+#[cfg(target_os = "linux")]
+pub const KHR_XCB_SURFACE_EXTENSION_NAME: &str = "VK_KHR_xcb_surface";
+
 pub struct Instance {
     handle: NonNull<ffi::OpaqueInstance>,
     dispatch_loader: DispatchLoaderInstance,
@@ -87,8 +91,8 @@ pub struct ApiVersion(u32);
 impl Instance {
     pub fn new(
         application_info: Option<&ApplicationInfo>,
-        _layers: Option<&[&str]>,
-        _extensions: Option<&[&str]>,
+        layers: Option<&[&str]>,
+        extensions: Option<&[&str]>,
     ) -> Self {
         let file_name = if cfg!(unix) {
             "libvulkan.so"
@@ -137,16 +141,46 @@ impl Instance {
 
         let p_application_info = app_info_c.as_ref().map_or(std::ptr::null(), |i| i);
 
+        let layers_c: Option<Vec<CString>> = layers.map(|l| {
+            l.iter()
+                .map(|name| CString::new(name.as_bytes()).unwrap())
+                .collect()
+        });
+        let extensions_c: Option<Vec<CString>> = extensions.map(|e| {
+            e.iter()
+                .map(|name| CString::new(name.as_bytes()).unwrap())
+                .collect()
+        });
+
+        let layer_ptrs: Option<Vec<*const i8>> = layers_c
+            .as_ref()
+            .map(|l| l.iter().map(|name| name.as_ptr()).collect());
+        let extension_ptrs: Option<Vec<*const i8>> = extensions_c
+            .as_ref()
+            .map(|e| e.iter().map(|name| name.as_ptr()).collect());
+
+        let enabled_layer_count = layer_ptrs.as_ref().map_or(0, |ptrs| ptrs.len() as u32);
+        let enabled_extension_count = extension_ptrs.as_ref().map_or(0, |ptrs| ptrs.len() as u32);
+
+        let pp_enabled_layer_names = layer_ptrs
+            .as_ref()
+            .map_or(std::ptr::null(), |ptrs| ptrs.as_ptr());
+        let pp_enabled_extension_names = extension_ptrs
+            .as_ref()
+            .map_or(std::ptr::null(), |ptrs| ptrs.as_ptr());
+
         let create_info = ffi::InstanceCreateInfo {
             s_type: ffi::StructureType::InstanceCreateInfo,
             p_next: std::ptr::null(),
             flags: 0,
             p_application_info,
-            enabled_layer_count: 0,
-            pp_enabled_layer_names: std::ptr::null(),
-            enabled_extension_count: 0,
-            pp_enabled_extension_names: std::ptr::null(),
+            enabled_layer_count,
+            pp_enabled_layer_names,
+            enabled_extension_count,
+            pp_enabled_extension_names,
         };
+
+        dbg!(&create_info);
 
         let mut handle = MaybeUninit::uninit();
         let result = unsafe {

@@ -8,7 +8,11 @@ fn main() {
         engine_version: vk::ApiVersion::default(),
         api_version: vk::ApiVersion::V1_0,
     };
-    let instance = vk::Instance::new(Some(&app_info), None, None);
+    let extensions = &[
+        vk::KHR_SURFACE_EXTENSION_NAME,
+        vk::KHR_XCB_SURFACE_EXTENSION_NAME,
+    ];
+    let instance = vk::Instance::new(Some(&app_info), None, Some(extensions));
 
     if let Some(v) = instance.version() {
         println!("Vulkan API {}", v);

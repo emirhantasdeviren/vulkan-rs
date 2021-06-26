@@ -53,6 +53,7 @@ pub enum Result {
     TooManyObjects = -10,
 }
 
+#[derive(Debug)]
 #[repr(C)]
 pub enum StructureType {
     ApplicationInfo = 0,
