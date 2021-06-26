@@ -180,8 +180,6 @@ impl Instance {
             pp_enabled_extension_names,
         };
 
-        dbg!(&create_info);
-
         let mut handle = MaybeUninit::uninit();
         let result = unsafe {
             (dispatch_loader.vk_create_instance.unwrap())(
