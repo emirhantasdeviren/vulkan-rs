@@ -3,6 +3,10 @@ use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::ptr::NonNull;
 
+
+#[cfg(not(target_pointer_width = "64"))]
+use std::num::NonZeroU64;
+
 use crate::ffi;
 use crate::linker::DynamicLibrary;
 
@@ -32,6 +36,14 @@ pub struct Device<'a> {
 pub struct Queue<'a> {
     handle: NonNull<ffi::OpaqueQueue>,
     _marker: PhantomData<(ffi::OpaqueQueue, &'a Device<'a>)>,
+}
+
+pub struct SurfaceKHR<'a> {
+    #[cfg(target_pointer_width = "64")]
+    handle: NonNull<ffi::OpaqueSurfaceKHR>,
+    #[cfg(not(target_pointer_width = "64"))]
+    handle: NonZeroU64,
+    instance: &'a Instance,
 }
 
 #[derive(Default)]

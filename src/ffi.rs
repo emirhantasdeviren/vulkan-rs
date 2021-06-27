@@ -32,6 +32,13 @@ pub struct OpaqueQueue {
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
 
+#[repr(C)]
+#[cfg(target_pointer_width = "64")]
+pub struct OpaqueSurfaceKHR {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
 #[derive(PartialEq, Eq, Debug)]
 #[repr(C)]
 pub enum Result {
