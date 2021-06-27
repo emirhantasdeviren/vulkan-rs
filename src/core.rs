@@ -46,6 +46,14 @@ pub struct SurfaceKHR<'a> {
     instance: &'a Instance,
 }
 
+pub struct SwapchainKHR<'a> {
+    #[cfg(target_pointer_width = "64")]
+    handle: NonNull<ffi::OpaqueSwapchainKHR>,
+    #[cfg(not(target_pointer_width = "64"))]
+    handle: NonZeroU64,
+    device: &'a Device<'a>,
+}
+
 #[derive(Default)]
 struct DispatchLoaderInstance {
     vk_get_instance_proc_addr: Option<ffi::PFN_vkGetInstanceProcAddr>,
