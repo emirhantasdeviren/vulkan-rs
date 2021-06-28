@@ -87,6 +87,7 @@ pub enum StructureType {
     InstanceCreateInfo = 1,
     DeviceQueueCreateInfo = 2,
     DeviceCreateInfo = 3,
+    CommandPoolCreateInfo = 39,
 }
 
 #[repr(C)]
@@ -208,12 +209,20 @@ pub type PFN_vkGetDeviceQueue = unsafe extern "system" fn(
     queue_index: u32,
     p_queue: *mut *mut OpaqueQueue,
 );
+pub type PFN_vkCreateCommandPool = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    create_info: *const CommandPoolCreateInfo,
+    p_allocator: *const AllocationCallbacks,
+    #[cfg(target_pointer_width = "64")] p_command_pool: *mut *mut OpaqueCommandPool,
+    #[cfg(not(target_pointer_width = "64"))] p_command_pool: *mut u64,
+) -> self::Result;
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;
 pub type QueueFlags = Flags;
 type DeviceQueueCreateFlags = Flags;
 type DeviceCreateFlags = Flags;
+type CommandPoolCreateFlags = Flags;
 
 #[repr(C)]
 pub struct ApplicationInfo {
@@ -459,4 +468,12 @@ pub struct DeviceCreateInfo {
     pub enabled_extension_count: u32,
     pub pp_enabled_extension_names: *const *const i8,
     pub p_enabled_features: *const PhysicalDeviceFeatures,
+}
+
+#[repr(C)]
+pub struct CommandPoolCreateInfo {
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub flags: CommandPoolCreateFlags,
+    pub queue_family_index: u32,
 }

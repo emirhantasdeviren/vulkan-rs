@@ -3,7 +3,6 @@ use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::ptr::NonNull;
 
-
 #[cfg(not(target_pointer_width = "64"))]
 use std::num::NonZeroU64;
 
@@ -87,6 +86,7 @@ struct DispatchLoaderPhysicalDevice {
 struct DispatchLoaderDevice {
     vk_destroy_device: ffi::PFN_vkDestroyDevice,
     vk_get_device_queue: ffi::PFN_vkGetDeviceQueue,
+    vk_create_command_pool: ffi::PFN_vkCreateCommandPool,
 }
 
 #[derive(PartialEq, Eq)]
@@ -443,6 +443,38 @@ impl<'a> Device<'a> {
             _marker: PhantomData,
         }
     }
+
+    pub fn create_command_pool(&self, queue_family_index: usize) -> CommandPool<'_> {
+        let create_info = ffi::CommandPoolCreateInfo {
+            s_type: ffi::StructureType::CommandPoolCreateInfo,
+            p_next: std::ptr::null(),
+            flags: 0,
+            queue_family_index: queue_family_index as u32,
+        };
+
+        let mut handle = MaybeUninit::uninit();
+        let result = unsafe {
+            (self.dispatch_loader.vk_create_command_pool)(
+                self.handle.as_ptr(),
+                &create_info,
+                std::ptr::null(),
+                handle.as_mut_ptr(),
+            )
+        };
+
+        if result == ffi::Result::Success {
+            let handle = unsafe { handle.assume_init() };
+            CommandPool {
+                #[cfg(target_pointer_width = "64")]
+                handle: unsafe { NonNull::new_unchecked(handle) },
+                #[cfg(not(target_pointer_width = "64"))]
+                handle: unsafe { NonZeroU64::new_unchecked(handle) },
+                _marker: PhantomData,
+            }
+        } else {
+            panic!("Could not create VkCommandPool: {:?}", result);
+        }
+    }
 }
 
 impl<'a> Drop for Device<'a> {
@@ -539,6 +571,12 @@ impl DispatchLoaderDevice {
             vk_get_device_queue: vk_get_device_proc_addr(
                 device_handle,
                 "vkGetDeviceQueue\0".as_ptr().cast(),
+            )
+            .map(|pfn| std::mem::transmute(pfn))
+            .unwrap(),
+            vk_create_command_pool: vk_get_device_proc_addr(
+                device_handle,
+                "vkCreateCommandPool\0".as_ptr().cast(),
             )
             .map(|pfn| std::mem::transmute(pfn))
             .unwrap(),

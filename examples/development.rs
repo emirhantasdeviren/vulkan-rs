@@ -31,4 +31,5 @@ fn main() {
 
     let device = physical_device.create_device(&[0], &[&[1.0f32]]);
     let _queue = device.get_device_queue(0, 0);
+    let _command_pool = device.create_command_pool(0);
 }
