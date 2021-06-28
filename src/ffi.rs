@@ -216,6 +216,12 @@ pub type PFN_vkCreateCommandPool = unsafe extern "system" fn(
     #[cfg(target_pointer_width = "64")] p_command_pool: *mut *mut OpaqueCommandPool,
     #[cfg(not(target_pointer_width = "64"))] p_command_pool: *mut u64,
 ) -> self::Result;
+pub type PFN_vkDestroyCommandPool = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    #[cfg(target_pointer_width = "64")] command_pool: *mut OpaqueCommandPool,
+    #[cfg(not(target_pointer_width = "64"))] command_pool: u64,
+    p_allocator: *const AllocationCallbacks,
+);
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;

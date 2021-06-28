@@ -47,7 +47,8 @@ pub struct CommandPool<'a> {
     handle: NonNull<ffi::OpaqueCommandPool>,
     #[cfg(not(target_pointer_width = "64"))]
     handle: NonZeroU64,
-    _marker: PhantomData<(ffi::OpaqueCommandPool, &'a Device<'a>)>,
+    device: &'a Device<'a>,
+    _marker: PhantomData<ffi::OpaqueCommandPool>,
 }
 
 pub struct SurfaceKHR<'a> {
@@ -87,6 +88,7 @@ struct DispatchLoaderDevice {
     vk_destroy_device: ffi::PFN_vkDestroyDevice,
     vk_get_device_queue: ffi::PFN_vkGetDeviceQueue,
     vk_create_command_pool: ffi::PFN_vkCreateCommandPool,
+    vk_destroy_command_pool: ffi::PFN_vkDestroyCommandPool,
 }
 
 #[derive(PartialEq, Eq)]
@@ -469,6 +471,7 @@ impl<'a> Device<'a> {
                 handle: unsafe { NonNull::new_unchecked(handle) },
                 #[cfg(not(target_pointer_width = "64"))]
                 handle: unsafe { NonZeroU64::new_unchecked(handle) },
+                device: self,
                 _marker: PhantomData,
             }
         } else {
@@ -481,6 +484,22 @@ impl<'a> Drop for Device<'a> {
     fn drop(&mut self) {
         println!("Dropped Device");
         unsafe { (self.dispatch_loader.vk_destroy_device)(self.handle.as_ptr(), std::ptr::null()) }
+    }
+}
+
+impl<'a> Drop for CommandPool<'a> {
+    fn drop(&mut self) {
+        println!("Dropped CommandPool");
+        unsafe {
+            (self.device.dispatch_loader.vk_destroy_command_pool)(
+                self.device.handle.as_ptr(),
+                #[cfg(target_pointer_width = "64")]
+                self.handle.as_ptr(),
+                #[cfg(not(target_pointer_width = "64"))]
+                self.handle.get(),
+                std::ptr::null(),
+            );
+        }
     }
 }
 
@@ -577,6 +596,12 @@ impl DispatchLoaderDevice {
             vk_create_command_pool: vk_get_device_proc_addr(
                 device_handle,
                 "vkCreateCommandPool\0".as_ptr().cast(),
+            )
+            .map(|pfn| std::mem::transmute(pfn))
+            .unwrap(),
+            vk_destroy_command_pool: vk_get_device_proc_addr(
+                device_handle,
+                "vkDestroyCommandPool\0".as_ptr().cast(),
             )
             .map(|pfn| std::mem::transmute(pfn))
             .unwrap(),
