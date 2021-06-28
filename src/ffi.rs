@@ -33,6 +33,19 @@ pub struct OpaqueQueue {
 }
 
 #[repr(C)]
+pub struct OpaqueCommandBuffer {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+#[cfg(target_pointer_width = "64")]
+pub struct OpaqueCommandPool {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
 #[cfg(target_pointer_width = "64")]
 pub struct OpaqueSurfaceKHR {
     _data: [u8; 0],

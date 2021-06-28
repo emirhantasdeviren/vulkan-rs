@@ -38,6 +38,19 @@ pub struct Queue<'a> {
     _marker: PhantomData<(ffi::OpaqueQueue, &'a Device<'a>)>,
 }
 
+pub struct CommandBuffer<'a> {
+    handle: NonNull<ffi::OpaqueCommandBuffer>,
+    _marker: PhantomData<(ffi::OpaqueCommandBuffer, &'a Device<'a>)>,
+}
+
+pub struct CommandPool<'a> {
+    #[cfg(target_pointer_width = "64")]
+    handle: NonNull<ffi::OpaqueCommandPool>,
+    #[cfg(not(target_pointer_width = "64"))]
+    handle: NonZeroU64,
+    _marker: PhantomData<(ffi::OpaqueCommandPool, &'a Device<'a>)>,
+}
+
 pub struct SurfaceKHR<'a> {
     #[cfg(target_pointer_width = "64")]
     handle: NonNull<ffi::OpaqueSurfaceKHR>,
