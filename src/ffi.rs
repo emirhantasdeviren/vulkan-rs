@@ -33,6 +33,13 @@ pub struct OpaqueQueue {
 }
 
 #[repr(C)]
+#[cfg(target_pointer_width = "64")]
+pub struct OpaqueSemaphore {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
 pub struct OpaqueCommandBuffer {
     _data: [u8; 0],
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
@@ -87,7 +94,9 @@ pub enum StructureType {
     InstanceCreateInfo = 1,
     DeviceQueueCreateInfo = 2,
     DeviceCreateInfo = 3,
+    SemaphoreCreateInfo = 9,
     CommandPoolCreateInfo = 39,
+    CommandBufferAllocateInfo = 40,
 }
 
 #[repr(C)]
@@ -114,6 +123,12 @@ pub enum PhysicalDeviceType {
     VirtualGpu = 3,
     Cpu = 4,
     MaxEnum = 0x7FFFFFFF,
+}
+
+#[repr(C)]
+pub enum CommandBufferLevel {
+    Primary = 0,
+    Secondary = 1,
 }
 
 #[repr(C)]
@@ -222,6 +237,24 @@ pub type PFN_vkDestroyCommandPool = unsafe extern "system" fn(
     #[cfg(not(target_pointer_width = "64"))] command_pool: u64,
     p_allocator: *const AllocationCallbacks,
 );
+pub type PFN_vkAllocateCommandBuffers = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    p_allocate_info: *const CommandBufferAllocateInfo,
+    p_command_buffers: *mut *mut OpaqueCommandBuffer,
+) -> self::Result;
+pub type PFN_vkCreateSemaphore = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    p_create_info: *const SemaphoreCreateInfo,
+    p_allocator: *const AllocationCallbacks,
+    #[cfg(target_pointer_width = "64")] p_semaphore: *mut *mut OpaqueSemaphore,
+    #[cfg(not(target_pointer_width = "64"))] p_semaphore: *mut u64,
+) -> self::Result;
+pub type PFN_vkDestroySemaphore = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    #[cfg(target_pointer_width = "64")] semaphore: *mut OpaqueSemaphore,
+    #[cfg(not(target_pointer_width = "64"))] semaphore: u64,
+    p_allocator: *const AllocationCallbacks,
+);
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;
@@ -229,6 +262,7 @@ pub type QueueFlags = Flags;
 type DeviceQueueCreateFlags = Flags;
 type DeviceCreateFlags = Flags;
 type CommandPoolCreateFlags = Flags;
+type SemaphoreCreateFlags = Flags;
 
 #[repr(C)]
 pub struct ApplicationInfo {
@@ -482,4 +516,23 @@ pub struct CommandPoolCreateInfo {
     pub p_next: *const c_void,
     pub flags: CommandPoolCreateFlags,
     pub queue_family_index: u32,
+}
+
+#[repr(C)]
+pub struct CommandBufferAllocateInfo {
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    #[cfg(target_pointer_width = "64")]
+    pub command_pool: *mut OpaqueCommandPool,
+    #[cfg(not(target_pointer_width = "64"))]
+    pub command_pool: u64,
+    pub level: CommandBufferLevel,
+    pub command_buffer_count: u32,
+}
+
+#[repr(C)]
+pub struct SemaphoreCreateInfo {
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub flags: SemaphoreCreateFlags,
 }

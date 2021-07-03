@@ -12,6 +12,8 @@ use crate::linker::DynamicLibrary;
 pub const KHR_SURFACE_EXTENSION_NAME: &str = "VK_KHR_surface";
 #[cfg(target_os = "linux")]
 pub const KHR_XCB_SURFACE_EXTENSION_NAME: &str = "VK_KHR_xcb_surface";
+#[cfg(target_os = "windows")]
+pub const KHR_WIN32_SURFACE_EXTENSION_NAME: &str = "VK_KHR_win32_surface";
 
 pub struct Instance {
     handle: NonNull<ffi::OpaqueInstance>,
@@ -37,9 +39,18 @@ pub struct Queue<'a> {
     _marker: PhantomData<(ffi::OpaqueQueue, &'a Device<'a>)>,
 }
 
+pub struct Semaphore<'a> {
+    #[cfg(target_pointer_width = "64")]
+    handle: NonNull<ffi::OpaqueSemaphore>,
+    #[cfg(not(target_pointer_width = "64"))]
+    handle: NonZeroU64,
+    device: &'a Device<'a>,
+    _marker: PhantomData<ffi::OpaqueSemaphore>,
+}
+
 pub struct CommandBuffer<'a> {
     handle: NonNull<ffi::OpaqueCommandBuffer>,
-    _marker: PhantomData<(ffi::OpaqueCommandBuffer, &'a Device<'a>)>,
+    _marker: PhantomData<(ffi::OpaqueCommandBuffer, &'a CommandPool<'a>)>,
 }
 
 pub struct CommandPool<'a> {
@@ -89,6 +100,9 @@ struct DispatchLoaderDevice {
     vk_get_device_queue: ffi::PFN_vkGetDeviceQueue,
     vk_create_command_pool: ffi::PFN_vkCreateCommandPool,
     vk_destroy_command_pool: ffi::PFN_vkDestroyCommandPool,
+    vk_allocate_command_buffers: ffi::PFN_vkAllocateCommandBuffers,
+    vk_create_semaphore: ffi::PFN_vkCreateSemaphore,
+    vk_destroy_semaphore: ffi::PFN_vkDestroySemaphore,
 }
 
 #[derive(PartialEq, Eq)]
@@ -478,6 +492,37 @@ impl<'a> Device<'a> {
             panic!("Could not create VkCommandPool: {:?}", result);
         }
     }
+
+    pub fn create_semaphore(&self) -> Semaphore<'_> {
+        let create_info = ffi::SemaphoreCreateInfo {
+            s_type: ffi::StructureType::SemaphoreCreateInfo,
+            p_next: std::ptr::null(),
+            flags: 0,
+        };
+
+        let mut handle = MaybeUninit::uninit();
+        let result = unsafe {
+            (self.dispatch_loader.vk_create_semaphore)(
+                self.handle.as_ptr(),
+                &create_info,
+                std::ptr::null(),
+                handle.as_mut_ptr(),
+            )
+        };
+
+        if result == ffi::Result::Success {
+            Semaphore {
+                #[cfg(target_pointer_width = "64")]
+                handle: unsafe { NonNull::new_unchecked(handle.assume_init()) },
+                #[cfg(not(target_pointer_width = "64"))]
+                handle: unsafe { NonZeroU64::new_unchecked(handle.assume_init()) },
+                device: self,
+                _marker: PhantomData,
+            }
+        } else {
+            panic!("Could not create Semaphore: {:?}", result)
+        }
+    }
 }
 
 impl<'a> Drop for Device<'a> {
@@ -487,11 +532,65 @@ impl<'a> Drop for Device<'a> {
     }
 }
 
+impl<'a> CommandPool<'a> {
+    pub fn allocate_command_buffers(&self, buffer_count: usize) -> Vec<CommandBuffer<'_>> {
+        let create_info = ffi::CommandBufferAllocateInfo {
+            s_type: ffi::StructureType::CommandBufferAllocateInfo,
+            p_next: std::ptr::null(),
+            #[cfg(target_pointer_width = "64")]
+            command_pool: self.handle.as_ptr(),
+            #[cfg(not(target_pointer_width = "64"))]
+            command_pool: self.handle.get(),
+            level: ffi::CommandBufferLevel::Primary,
+            command_buffer_count: buffer_count as u32,
+        };
+
+        let mut command_buffers = Vec::with_capacity(buffer_count);
+
+        let result = unsafe {
+            (self.device.dispatch_loader.vk_allocate_command_buffers)(
+                self.device.handle.as_ptr(),
+                &create_info,
+                command_buffers.as_mut_ptr(),
+            )
+        };
+
+        if result == ffi::Result::Success {
+            unsafe { command_buffers.set_len(buffer_count) };
+            command_buffers
+                .into_iter()
+                .map(|buffer| CommandBuffer {
+                    handle: unsafe { NonNull::new_unchecked(buffer) },
+                    _marker: PhantomData,
+                })
+                .collect()
+        } else {
+            panic!("Could not create CommandBuffer")
+        }
+    }
+}
+
 impl<'a> Drop for CommandPool<'a> {
     fn drop(&mut self) {
         println!("Dropped CommandPool");
         unsafe {
             (self.device.dispatch_loader.vk_destroy_command_pool)(
+                self.device.handle.as_ptr(),
+                #[cfg(target_pointer_width = "64")]
+                self.handle.as_ptr(),
+                #[cfg(not(target_pointer_width = "64"))]
+                self.handle.get(),
+                std::ptr::null(),
+            );
+        }
+    }
+}
+
+impl<'a> Drop for Semaphore<'a> {
+    fn drop(&mut self) {
+        println!("Dropped Semaphore");
+        unsafe {
+            (self.device.dispatch_loader.vk_destroy_semaphore)(
                 self.device.handle.as_ptr(),
                 #[cfg(target_pointer_width = "64")]
                 self.handle.as_ptr(),
@@ -602,6 +701,24 @@ impl DispatchLoaderDevice {
             vk_destroy_command_pool: vk_get_device_proc_addr(
                 device_handle,
                 "vkDestroyCommandPool\0".as_ptr().cast(),
+            )
+            .map(|pfn| std::mem::transmute(pfn))
+            .unwrap(),
+            vk_allocate_command_buffers: vk_get_device_proc_addr(
+                device_handle,
+                "vkAllocateCommandBuffers\0".as_ptr().cast(),
+            )
+            .map(|pfn| std::mem::transmute(pfn))
+            .unwrap(),
+            vk_create_semaphore: vk_get_device_proc_addr(
+                device_handle,
+                "vkCreateSemaphore\0".as_ptr().cast(),
+            )
+            .map(|pfn| std::mem::transmute(pfn))
+            .unwrap(),
+            vk_destroy_semaphore: vk_get_device_proc_addr(
+                device_handle,
+                "vkDestroySemaphore\0".as_ptr().cast(),
             )
             .map(|pfn| std::mem::transmute(pfn))
             .unwrap(),
