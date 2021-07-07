@@ -45,6 +45,7 @@ pub struct Semaphore<'a> {
     #[cfg(not(target_pointer_width = "64"))]
     handle: NonZeroU64,
     device: &'a Device<'a>,
+    #[cfg(target_pointer_width = "64")]
     _marker: PhantomData<ffi::OpaqueSemaphore>,
 }
 
@@ -59,6 +60,7 @@ pub struct CommandPool<'a> {
     #[cfg(not(target_pointer_width = "64"))]
     handle: NonZeroU64,
     device: &'a Device<'a>,
+    #[cfg(target_pointer_width = "64")]
     _marker: PhantomData<ffi::OpaqueCommandPool>,
 }
 
@@ -337,10 +339,12 @@ impl<'a> PhysicalDevice<'a> {
             ffi::PhysicalDeviceType::Cpu => self::PhysicalDeviceType::Cpu,
             ffi::PhysicalDeviceType::MaxEnum => panic!("MAX ENUM?"),
         };
+
         // NOTE: Since `device_name` is UTF-8 null-terminated string according to Vulkan manual.
-        // We don't have to check the validation of UTF-8. Find a better way.
+        // We don't have to check that the string contains valid UTF-8.
         let device_name_cstr = unsafe { CStr::from_ptr(props.device_name.as_ptr()) };
-        let device_name = String::from(device_name_cstr.to_str().unwrap());
+        let device_name =
+            unsafe { String::from_utf8_unchecked(device_name_cstr.to_bytes().to_vec()) };
 
         PhysicalDeviceProperties {
             api_version: ApiVersion(props.api_version),
@@ -486,6 +490,7 @@ impl<'a> Device<'a> {
                 #[cfg(not(target_pointer_width = "64"))]
                 handle: unsafe { NonZeroU64::new_unchecked(handle) },
                 device: self,
+                #[cfg(target_pointer_width = "64")]
                 _marker: PhantomData,
             }
         } else {
@@ -517,6 +522,7 @@ impl<'a> Device<'a> {
                 #[cfg(not(target_pointer_width = "64"))]
                 handle: unsafe { NonZeroU64::new_unchecked(handle.assume_init()) },
                 device: self,
+                #[cfg(target_pointer_width = "64")]
                 _marker: PhantomData,
             }
         } else {
