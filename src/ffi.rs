@@ -97,6 +97,8 @@ pub enum StructureType {
     SemaphoreCreateInfo = 9,
     CommandPoolCreateInfo = 39,
     CommandBufferAllocateInfo = 40,
+    XlibSurfaceCreateInfoKHR = 1000004000,
+    XcbSurfaceCreateInfoKHR = 1000005000,
 }
 
 #[repr(C)]
@@ -255,6 +257,12 @@ pub type PFN_vkDestroySemaphore = unsafe extern "system" fn(
     #[cfg(not(target_pointer_width = "64"))] semaphore: u64,
     p_allocator: *const AllocationCallbacks,
 );
+pub type PFN_vkDestroySurfaceKHR = unsafe extern "system" fn(
+    instance: *mut OpaqueInstance,
+    #[cfg(target_pointer_width = "64")] surface: *mut OpaqueSurfaceKHR,
+    #[cfg(not(target_pointer_width = "64"))] surface: u64,
+    p_allocator: *const AllocationCallbacks,
+);
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;
@@ -263,6 +271,8 @@ type DeviceQueueCreateFlags = Flags;
 type DeviceCreateFlags = Flags;
 type CommandPoolCreateFlags = Flags;
 type SemaphoreCreateFlags = Flags;
+type XlibSurfaceCreateFlagsKHR = Flags;
+type XcbSurfaceCreateFlagsKHR = Flags;
 
 #[repr(C)]
 pub struct ApplicationInfo {
@@ -536,3 +546,109 @@ pub struct SemaphoreCreateInfo {
     pub p_next: *const c_void,
     pub flags: SemaphoreCreateFlags,
 }
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
+#[repr(C)]
+pub struct xcb_connection_t {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
+pub type xcb_window_t = u32;
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
+#[repr(C)]
+pub struct XcbSurfaceCreateInfoKHR {
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub flags: XcbSurfaceCreateFlagsKHR,
+    pub connection: *mut xcb_connection_t,
+    pub window: xcb_window_t,
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
+pub type PFN_vkCreateXcbSurfaceKHR = unsafe extern "system" fn(
+    instance: *mut OpaqueInstance,
+    p_create_info: *const XcbSurfaceCreateInfoKHR,
+    p_allocator: *const AllocationCallbacks,
+    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut OpaqueSurfaceKHR,
+    #[cfg(not(target_pointer_width = "64"))] p_surface: *mut u64,
+) -> self::Result;
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
+#[repr(C)]
+pub struct Display {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
+pub type Window = u64;
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
+#[repr(C)]
+pub struct XlibSurfaceCreateInfoKHR {
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub flags: XlibSurfaceCreateFlagsKHR,
+    pub dpy: *mut Display,
+    pub window: Window,
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
+pub type PFN_vkCreateXlibSurfaceKHR = unsafe extern "system" fn(
+    instance: *mut OpaqueInstance,
+    p_create_info: *const XlibSurfaceCreateInfoKHR,
+    p_allocator: *const AllocationCallbacks,
+    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut OpaqueSurfaceKHR,
+    #[cfg(not(target_pointer_width = "64"))] p_surface: *mut u64,
+) -> self::Result;

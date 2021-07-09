@@ -9,9 +9,25 @@ use std::num::NonZeroU64;
 use crate::ffi;
 use crate::linker::DynamicLibrary;
 
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+
 pub const KHR_SURFACE_EXTENSION_NAME: &str = "VK_KHR_surface";
-#[cfg(target_os = "linux")]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
 pub const KHR_XCB_SURFACE_EXTENSION_NAME: &str = "VK_KHR_xcb_surface";
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
+pub const KHR_XLIB_SURFACE_EXTENSION_NAME: &str = "VK_KHR_xlib_surface";
 #[cfg(target_os = "windows")]
 pub const KHR_WIN32_SURFACE_EXTENSION_NAME: &str = "VK_KHR_win32_surface";
 
@@ -70,6 +86,8 @@ pub struct SurfaceKHR<'a> {
     #[cfg(not(target_pointer_width = "64"))]
     handle: NonZeroU64,
     instance: &'a Instance,
+    #[cfg(target_pointer_width = "64")]
+    _marker: PhantomData<ffi::OpaqueSurfaceKHR>,
 }
 
 pub struct SwapchainKHR<'a> {
@@ -78,6 +96,8 @@ pub struct SwapchainKHR<'a> {
     #[cfg(not(target_pointer_width = "64"))]
     handle: NonZeroU64,
     device: &'a Device<'a>,
+    #[cfg(target_pointer_width = "64")]
+    _marker: PhantomData<ffi::OpaqueSwapchainKHR>,
 }
 
 #[derive(Default)]
@@ -87,6 +107,23 @@ struct DispatchLoaderInstance {
     vk_create_instance: Option<ffi::PFN_vkCreateInstance>,
     vk_destroy_instance: Option<ffi::PFN_vkDestroyInstance>,
     vk_enumerate_physical_devices: Option<ffi::PFN_vkEnumeratePhysicalDevices>,
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ))]
+    vk_create_xcb_surface_khr: Option<ffi::PFN_vkCreateXcbSurfaceKHR>,
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ))]
+    vk_create_xlib_surface_khr: Option<ffi::PFN_vkCreateXlibSurfaceKHR>,
+    vk_destroy_surface_khr: Option<ffi::PFN_vkDestroySurfaceKHR>,
 }
 
 struct DispatchLoaderPhysicalDevice {
@@ -293,6 +330,80 @@ impl Instance {
             }
         } else {
             panic!("Could not get physical device count.");
+        }
+    }
+
+    pub fn create_surface_khr(&self, window: &impl HasRawWindowHandle) -> SurfaceKHR<'_> {
+        match window.raw_window_handle() {
+            #[cfg(target_os = "windows")]
+            RawWindowHandle::Windows(_window_handle) => todo!(),
+            RawWindowHandle::Xcb(window_handle) => {
+                let create_info = ffi::XcbSurfaceCreateInfoKHR {
+                    s_type: ffi::StructureType::XcbSurfaceCreateInfoKHR,
+                    p_next: std::ptr::null(),
+                    flags: 0,
+                    connection: window_handle.connection.cast(),
+                    window: window_handle.window,
+                };
+
+                let mut handle = MaybeUninit::uninit();
+                let result = unsafe {
+                    (self.dispatch_loader.vk_create_xcb_surface_khr.unwrap())(
+                        self.handle.as_ptr(),
+                        &create_info,
+                        std::ptr::null(),
+                        handle.as_mut_ptr(),
+                    )
+                };
+
+                if result == ffi::Result::Success {
+                    SurfaceKHR {
+                        #[cfg(target_pointer_width = "64")]
+                        handle: unsafe { NonNull::new_unchecked(handle.assume_init()) },
+                        #[cfg(not(target_pointer_width = "64"))]
+                        handle: unsafe { NonZeroU64::new_unchecked(handle.assume_init()) },
+                        instance: self,
+                        #[cfg(target_pointer_width = "64")]
+                        _marker: PhantomData,
+                    }
+                } else {
+                    panic!("Could not create VkSurfaceKHR")
+                }
+            }
+            RawWindowHandle::Xlib(window_handle) => {
+                let create_info = ffi::XlibSurfaceCreateInfoKHR {
+                    s_type: ffi::StructureType::XlibSurfaceCreateInfoKHR,
+                    p_next: std::ptr::null(),
+                    flags: 0,
+                    dpy: window_handle.display.cast(),
+                    window: window_handle.window,
+                };
+
+                let mut handle = MaybeUninit::uninit();
+                let result = unsafe {
+                    (self.dispatch_loader.vk_create_xlib_surface_khr.unwrap())(
+                        self.handle.as_ptr(),
+                        &create_info,
+                        std::ptr::null(),
+                        handle.as_mut_ptr(),
+                    )
+                };
+
+                if result == ffi::Result::Success {
+                    SurfaceKHR {
+                        #[cfg(target_pointer_width = "64")]
+                        handle: unsafe { NonNull::new_unchecked(handle.assume_init()) },
+                        #[cfg(not(target_pointer_width = "64"))]
+                        handle: unsafe { NonZeroU64::new_unchecked(handle.assume_init()) },
+                        instance: self,
+                        #[cfg(target_pointer_width = "64")]
+                        _marker: PhantomData,
+                    }
+                } else {
+                    panic!("Could not create VkSurfaceKHR")
+                }
+            },
+            _ => unimplemented!(),
         }
     }
 
@@ -592,6 +703,26 @@ impl<'a> Drop for CommandPool<'a> {
     }
 }
 
+impl<'a> Drop for SurfaceKHR<'a> {
+    fn drop(&mut self) {
+        println!("Dropped SurfaceKHR");
+        unsafe {
+            (self
+                .instance
+                .dispatch_loader
+                .vk_destroy_surface_khr
+                .unwrap())(
+                self.instance.handle.as_ptr(),
+                #[cfg(target_pointer_width = "64")]
+                self.handle.as_ptr(),
+                #[cfg(not(target_pointer_width = "64"))]
+                self.handle.get(),
+                std::ptr::null(),
+            );
+        }
+    }
+}
+
 impl<'a> Drop for Semaphore<'a> {
     fn drop(&mut self) {
         println!("Dropped Semaphore");
@@ -637,6 +768,25 @@ impl DispatchLoaderInstance {
                 .map(|pfn| std::mem::transmute(pfn));
         self.vk_enumerate_physical_devices =
             vk_get_instance_proc_addr(instance, "vkEnumeratePhysicalDevices\0".as_ptr().cast())
+                .map(|pfn| std::mem::transmute(pfn));
+
+        if cfg!(any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        )) {
+            self.vk_create_xcb_surface_khr =
+                vk_get_instance_proc_addr(instance, "vkCreateXcbSurfaceKHR\0".as_ptr().cast())
+                    .map(|pfn| std::mem::transmute(pfn));
+            self.vk_create_xlib_surface_khr =
+                vk_get_instance_proc_addr(instance, "vkCreateXlibSurfaceKHR\0".as_ptr().cast())
+                    .map(|pfn| std::mem::transmute(pfn));
+        }
+
+        self.vk_destroy_surface_khr =
+            vk_get_instance_proc_addr(instance, "vkDestroySurfaceKHR\0".as_ptr().cast())
                 .map(|pfn| std::mem::transmute(pfn));
     }
 }
