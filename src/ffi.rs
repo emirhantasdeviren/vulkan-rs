@@ -99,6 +99,7 @@ pub enum StructureType {
     CommandBufferAllocateInfo = 40,
     XlibSurfaceCreateInfoKHR = 1000004000,
     XcbSurfaceCreateInfoKHR = 1000005000,
+    Win32SurfaceCreateInfoKHR = 1000009000,
 }
 
 #[repr(C)]
@@ -271,8 +272,24 @@ type DeviceQueueCreateFlags = Flags;
 type DeviceCreateFlags = Flags;
 type CommandPoolCreateFlags = Flags;
 type SemaphoreCreateFlags = Flags;
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
 type XlibSurfaceCreateFlagsKHR = Flags;
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
 type XcbSurfaceCreateFlagsKHR = Flags;
+#[cfg(target_os = "windows")]
+type Win32SurfaceCreateFlagsKHR = Flags;
 
 #[repr(C)]
 pub struct ApplicationInfo {
@@ -648,6 +665,39 @@ pub struct XlibSurfaceCreateInfoKHR {
 pub type PFN_vkCreateXlibSurfaceKHR = unsafe extern "system" fn(
     instance: *mut OpaqueInstance,
     p_create_info: *const XlibSurfaceCreateInfoKHR,
+    p_allocator: *const AllocationCallbacks,
+    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut OpaqueSurfaceKHR,
+    #[cfg(not(target_pointer_width = "64"))] p_surface: *mut u64,
+) -> self::Result;
+
+#[cfg(target_os = "windows")]
+#[repr(C)]
+pub struct HINSTANCE__ {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[cfg(target_os = "windows")]
+#[repr(C)]
+pub struct HWND__ {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[cfg(target_os = "windows")]
+#[repr(C)]
+pub struct Win32SurfaceCreateInfoKHR {
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub flags: Win32SurfaceCreateFlagsKHR,
+    pub hinstance: *mut HINSTANCE__,
+    pub hwnd: *mut HWND__,
+}
+
+#[cfg(target_os = "windows")]
+pub type PFN_vkCreateWin32SurfaceKHR = unsafe extern "system" fn(
+    instance: *mut OpaqueInstance,
+    p_create_info: *const Win32SurfaceCreateInfoKHR,
     p_allocator: *const AllocationCallbacks,
     #[cfg(target_pointer_width = "64")] p_surface: *mut *mut OpaqueSurfaceKHR,
     #[cfg(not(target_pointer_width = "64"))] p_surface: *mut u64,

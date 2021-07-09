@@ -123,6 +123,8 @@ struct DispatchLoaderInstance {
         target_os = "openbsd"
     ))]
     vk_create_xlib_surface_khr: Option<ffi::PFN_vkCreateXlibSurfaceKHR>,
+    #[cfg(target_os = "windows")]
+    vk_create_win32_surface_khr: Option<ffi::PFN_vkCreateWin32SurfaceKHR>,
     vk_destroy_surface_khr: Option<ffi::PFN_vkDestroySurfaceKHR>,
 }
 
@@ -336,7 +338,46 @@ impl Instance {
     pub fn create_surface_khr(&self, window: &impl HasRawWindowHandle) -> SurfaceKHR<'_> {
         match window.raw_window_handle() {
             #[cfg(target_os = "windows")]
-            RawWindowHandle::Windows(_window_handle) => todo!(),
+            RawWindowHandle::Windows(window_handle) => {
+                let create_info = ffi::Win32SurfaceCreateInfoKHR {
+                    s_type: ffi::StructureType::Win32SurfaceCreateInfoKHR,
+                    p_next: std::ptr::null(),
+                    flags: 0,
+                    hinstance: window_handle.hinstance.cast(),
+                    hwnd: window_handle.hwnd.cast(),
+                };
+
+                let mut handle = MaybeUninit::uninit();
+                let result = unsafe {
+                    (self.dispatch_loader.vk_create_win32_surface_khr.unwrap())(
+                        self.handle.as_ptr(),
+                        &create_info,
+                        std::ptr::null(),
+                        handle.as_mut_ptr(),
+                    )
+                };
+
+                if result == ffi::Result::Success {
+                    SurfaceKHR {
+                        #[cfg(target_pointer_width = "64")]
+                        handle: unsafe { NonNull::new_unchecked(handle.assume_init()) },
+                        #[cfg(not(target_pointer_width = "64"))]
+                        handle: unsafe { NonZeroU64::new_unchecked(handle.assume_init()) },
+                        instance: self,
+                        #[cfg(target_pointer_width = "64")]
+                        _marker: PhantomData,
+                    }
+                } else {
+                    panic!("Could not create VkSurfaceKHR")
+                }
+            }
+            #[cfg(any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            ))]
             RawWindowHandle::Xcb(window_handle) => {
                 let create_info = ffi::XcbSurfaceCreateInfoKHR {
                     s_type: ffi::StructureType::XcbSurfaceCreateInfoKHR,
@@ -370,6 +411,13 @@ impl Instance {
                     panic!("Could not create VkSurfaceKHR")
                 }
             }
+            #[cfg(any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            ))]
             RawWindowHandle::Xlib(window_handle) => {
                 let create_info = ffi::XlibSurfaceCreateInfoKHR {
                     s_type: ffi::StructureType::XlibSurfaceCreateInfoKHR,
@@ -770,18 +818,23 @@ impl DispatchLoaderInstance {
             vk_get_instance_proc_addr(instance, "vkEnumeratePhysicalDevices\0".as_ptr().cast())
                 .map(|pfn| std::mem::transmute(pfn));
 
-        if cfg!(any(
-            target_os = "linux",
-            target_os = "dragonfly",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd"
-        )) {
-            self.vk_create_xcb_surface_khr =
-                vk_get_instance_proc_addr(instance, "vkCreateXcbSurfaceKHR\0".as_ptr().cast())
-                    .map(|pfn| std::mem::transmute(pfn));
-            self.vk_create_xlib_surface_khr =
-                vk_get_instance_proc_addr(instance, "vkCreateXlibSurfaceKHR\0".as_ptr().cast())
+        // if cfg!(any(
+        //     target_os = "linux",
+        //     target_os = "dragonfly",
+        //     target_os = "freebsd",
+        //     target_os = "netbsd",
+        //     target_os = "openbsd"
+        // )) {
+        //     self.vk_create_xcb_surface_khr =
+        //         vk_get_instance_proc_addr(instance, "vkCreateXcbSurfaceKHR\0".as_ptr().cast())
+        //             .map(|pfn| std::mem::transmute(pfn));
+        //     self.vk_create_xlib_surface_khr =
+        //         vk_get_instance_proc_addr(instance, "vkCreateXlibSurfaceKHR\0".as_ptr().cast())
+        //             .map(|pfn| std::mem::transmute(pfn));
+        // } 
+        if cfg!(target_os = "windows") {
+            self.vk_create_win32_surface_khr =
+                vk_get_instance_proc_addr(instance, "vkCreateWin32SurfaceKHR\0".as_ptr().cast())
                     .map(|pfn| std::mem::transmute(pfn));
         }
 
