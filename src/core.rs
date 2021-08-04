@@ -429,6 +429,44 @@ pub enum Format {
 #[derive(Default, Clone, Copy)]
 pub struct ApiVersion(u32);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Error {
+    OutOfHostMemory,
+    OutOfDeviceMemory,
+    InitializationFailed,
+    DeviceLost,
+    MemoryMapFailed,
+    LayerNotPresent,
+    ExtensionNotPresent,
+    FeatureNotPresent,
+    IncompatibleDriver,
+    TooManyObjects,
+    FormatNotSupported,
+    FragmentedPool,
+    Unknown,
+    OutOfPoolMemory,
+    InvalidExternalHandle,
+    Fragmentation,
+    InvalidOpaqueCaptureAddress,
+    SurfaceLostKhr,
+    NativeWindowInUseKhr,
+    OutOfDateKhr,
+    IncompatibleDisplayKhr,
+    ValidationFailedExt,
+    InvalidShaderNv,
+    InvalidDrmFormatModifierPlaneLayoutExt,
+    NotPermittedExt,
+    FullScreenExclusiveModeLostExt,
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "vulkan run-time error")
+    }
+}
+
+impl std::error::Error for Error {}
+
 impl Instance {
     pub fn new(
         application_info: Option<&ApplicationInfo>,
