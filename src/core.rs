@@ -1069,13 +1069,14 @@ impl DispatchLoaderInstance {
             vk_get_instance_proc_addr(instance, "vkEnumeratePhysicalDevices\0".as_ptr().cast())
                 .map(|pfn| std::mem::transmute(pfn));
 
-        if cfg!(any(
+        #[cfg(any(
             target_os = "linux",
             target_os = "dragonfly",
             target_os = "freebsd",
             target_os = "netbsd",
             target_os = "openbsd"
-        )) {
+        ))]
+        {
             self.vk_create_xcb_surface_khr =
                 vk_get_instance_proc_addr(instance, "vkCreateXcbSurfaceKHR\0".as_ptr().cast())
                     .map(|pfn| std::mem::transmute(pfn));
@@ -1083,11 +1084,12 @@ impl DispatchLoaderInstance {
                 vk_get_instance_proc_addr(instance, "vkCreateXlibSurfaceKHR\0".as_ptr().cast())
                     .map(|pfn| std::mem::transmute(pfn));
         }
-        // if cfg!(target_os = "windows") {
-        //     self.vk_create_win32_surface_khr =
-        //         vk_get_instance_proc_addr(instance, "vkCreateWin32SurfaceKHR\0".as_ptr().cast())
-        //             .map(|pfn| std::mem::transmute(pfn));
-        // }
+        #[cfg(target_os = "windows")]
+        {
+            self.vk_create_win32_surface_khr =
+                vk_get_instance_proc_addr(instance, "vkCreateWin32SurfaceKHR\0".as_ptr().cast())
+                    .map(|pfn| std::mem::transmute(pfn));
+        }
 
         self.vk_destroy_surface_khr =
             vk_get_instance_proc_addr(instance, "vkDestroySurfaceKHR\0".as_ptr().cast())
