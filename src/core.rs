@@ -32,6 +32,8 @@ pub const KHR_XLIB_SURFACE_EXTENSION_NAME: &str = "VK_KHR_xlib_surface";
 #[cfg(target_os = "windows")]
 pub const KHR_WIN32_SURFACE_EXTENSION_NAME: &str = "VK_KHR_win32_surface";
 
+pub type Result<T> = std::result::Result<T, Error>;
+
 pub struct Instance {
     handle: NonNull<ffi::OpaqueInstance>,
     dispatch_loader: DispatchLoaderInstance,
@@ -472,7 +474,7 @@ impl Instance {
         application_info: Option<&ApplicationInfo>,
         layers: Option<&[&str]>,
         extensions: Option<&[&str]>,
-    ) -> Self {
+    ) -> Result<Self> {
         let file_name = if cfg!(unix) {
             "libvulkan.so"
         } else if cfg!(windows) {
@@ -568,18 +570,25 @@ impl Instance {
             )
         };
 
-        if result == ffi::Result::Success {
-            let handle = unsafe { handle.assume_init() };
-            unsafe { dispatch_loader.load(handle) };
+        match result {
+            ffi::Result::Success => {
+                let handle = unsafe { handle.assume_init() };
+                unsafe { dispatch_loader.load(handle) };
 
-            Self {
-                handle: unsafe { NonNull::new_unchecked(handle) },
-                dispatch_loader,
-                _lib: lib,
-                _marker: PhantomData,
+                Ok(Self {
+                    handle: unsafe { NonNull::new_unchecked(handle) },
+                    dispatch_loader,
+                    _lib: lib,
+                    _marker: PhantomData,
+                })
             }
-        } else {
-            panic!("Returned {:?}", result);
+            ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
+            ffi::Result::ErrorOutOfDeviceMemory => Err(Error::OutOfDeviceMemory),
+            ffi::Result::ErrorInitializationFailed => Err(Error::InitializationFailed),
+            ffi::Result::ErrorLayerNotPresent => Err(Error::LayerNotPresent),
+            ffi::Result::ErrorExtensionNotPresent => Err(Error::ExtensionNotPresent),
+            ffi::Result::ErrorIncompatibleDriver => Err(Error::IncompatibleDriver),
+            _ => unreachable!(),
         }
     }
 
