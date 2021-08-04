@@ -54,14 +54,14 @@ pub struct OpaqueCommandPool {
 
 #[repr(C)]
 #[cfg(target_pointer_width = "64")]
-pub struct OpaqueSurfaceKHR {
+pub struct OpaqueSurfaceKhr {
     _data: [u8; 0],
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
 
 #[repr(C)]
 #[cfg(target_pointer_width = "64")]
-pub struct OpaqueSwapchainKHR {
+pub struct OpaqueSwapchainKhr {
     _data: [u8; 0],
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
@@ -119,9 +119,9 @@ pub enum StructureType {
     SemaphoreCreateInfo = 9,
     CommandPoolCreateInfo = 39,
     CommandBufferAllocateInfo = 40,
-    XlibSurfaceCreateInfoKHR = 1000004000,
-    XcbSurfaceCreateInfoKHR = 1000005000,
-    Win32SurfaceCreateInfoKHR = 1000009000,
+    XlibSurfaceCreateInfoKhr = 1000004000,
+    XcbSurfaceCreateInfoKhr = 1000005000,
+    Win32SurfaceCreateInfoKhr = 1000009000,
 }
 
 #[repr(i32)]
@@ -287,7 +287,7 @@ pub type PFN_vkDestroySemaphore = unsafe extern "system" fn(
 );
 pub type PFN_vkDestroySurfaceKHR = unsafe extern "system" fn(
     instance: *mut OpaqueInstance,
-    #[cfg(target_pointer_width = "64")] surface: *mut OpaqueSurfaceKHR,
+    #[cfg(target_pointer_width = "64")] surface: *mut OpaqueSurfaceKhr,
     #[cfg(not(target_pointer_width = "64"))] surface: u64,
     p_allocator: *const AllocationCallbacks,
 );
@@ -308,7 +308,7 @@ type ImageUsageFlags = Flags;
     target_os = "netbsd",
     target_os = "openbsd"
 ))]
-type XlibSurfaceCreateFlagsKHR = Flags;
+type XlibSurfaceCreateFlagsKhr = Flags;
 #[cfg(any(
     target_os = "linux",
     target_os = "dragonfly",
@@ -316,9 +316,9 @@ type XlibSurfaceCreateFlagsKHR = Flags;
     target_os = "netbsd",
     target_os = "openbsd"
 ))]
-type XcbSurfaceCreateFlagsKHR = Flags;
+type XcbSurfaceCreateFlagsKhr = Flags;
 #[cfg(target_os = "windows")]
-type Win32SurfaceCreateFlagsKHR = Flags;
+type Win32SurfaceCreateFlagsKhr = Flags;
 
 #[repr(C)]
 pub struct ApplicationInfo {
@@ -623,10 +623,10 @@ pub type xcb_window_t = u32;
     target_os = "openbsd"
 ))]
 #[repr(C)]
-pub struct XcbSurfaceCreateInfoKHR {
+pub struct XcbSurfaceCreateInfoKhr {
     pub s_type: StructureType,
     pub p_next: *const c_void,
-    pub flags: XcbSurfaceCreateFlagsKHR,
+    pub flags: XcbSurfaceCreateFlagsKhr,
     pub connection: *mut xcb_connection_t,
     pub window: xcb_window_t,
 }
@@ -640,9 +640,9 @@ pub struct XcbSurfaceCreateInfoKHR {
 ))]
 pub type PFN_vkCreateXcbSurfaceKHR = unsafe extern "system" fn(
     instance: *mut OpaqueInstance,
-    p_create_info: *const XcbSurfaceCreateInfoKHR,
+    p_create_info: *const XcbSurfaceCreateInfoKhr,
     p_allocator: *const AllocationCallbacks,
-    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut OpaqueSurfaceKHR,
+    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut OpaqueSurfaceKhr,
     #[cfg(not(target_pointer_width = "64"))] p_surface: *mut u64,
 ) -> self::Result;
 
@@ -676,10 +676,10 @@ pub type Window = u64;
     target_os = "openbsd"
 ))]
 #[repr(C)]
-pub struct XlibSurfaceCreateInfoKHR {
+pub struct XlibSurfaceCreateInfoKhr {
     pub s_type: StructureType,
     pub p_next: *const c_void,
-    pub flags: XlibSurfaceCreateFlagsKHR,
+    pub flags: XlibSurfaceCreateFlagsKhr,
     pub dpy: *mut Display,
     pub window: Window,
 }
@@ -693,9 +693,9 @@ pub struct XlibSurfaceCreateInfoKHR {
 ))]
 pub type PFN_vkCreateXlibSurfaceKHR = unsafe extern "system" fn(
     instance: *mut OpaqueInstance,
-    p_create_info: *const XlibSurfaceCreateInfoKHR,
+    p_create_info: *const XlibSurfaceCreateInfoKhr,
     p_allocator: *const AllocationCallbacks,
-    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut OpaqueSurfaceKHR,
+    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut OpaqueSurfaceKhr,
     #[cfg(not(target_pointer_width = "64"))] p_surface: *mut u64,
 ) -> self::Result;
 
@@ -715,10 +715,10 @@ pub struct HWND__ {
 
 #[cfg(target_os = "windows")]
 #[repr(C)]
-pub struct Win32SurfaceCreateInfoKHR {
+pub struct Win32SurfaceCreateInfoKhr {
     pub s_type: StructureType,
     pub p_next: *const c_void,
-    pub flags: Win32SurfaceCreateFlagsKHR,
+    pub flags: Win32SurfaceCreateFlagsKhr,
     pub hinstance: *mut HINSTANCE__,
     pub hwnd: *mut HWND__,
 }
@@ -726,9 +726,9 @@ pub struct Win32SurfaceCreateInfoKHR {
 #[cfg(target_os = "windows")]
 pub type PFN_vkCreateWin32SurfaceKHR = unsafe extern "system" fn(
     instance: *mut OpaqueInstance,
-    p_create_info: *const Win32SurfaceCreateInfoKHR,
+    p_create_info: *const Win32SurfaceCreateInfoKhr,
     p_allocator: *const AllocationCallbacks,
-    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut OpaqueSurfaceKHR,
+    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut OpaqueSurfaceKhr,
     #[cfg(not(target_pointer_width = "64"))] p_surface: *mut u64,
 ) -> self::Result;
 
@@ -1046,7 +1046,7 @@ pub struct SwapchainCreateInfoKhr {
     p_next: *const c_void,
     flags: SwapchainCreateFlagsKhr,
     #[cfg(target_pointer_width = "64")]
-    surface: *mut OpaqueSurfaceKHR,
+    surface: *mut OpaqueSurfaceKhr,
     #[cfg(not(target_pointer_width = "64"))]
     surface: u64,
     min_image_count: u32,
@@ -1063,7 +1063,7 @@ pub struct SwapchainCreateInfoKhr {
     present_mode: PresentModeKhr,
     clipped: Bool32,
     #[cfg(target_pointer_width = "64")]
-    old_swapchain: *mut OpaqueSwapchainKHR,
+    old_swapchain: *mut OpaqueSwapchainKhr,
     #[cfg(not(target_pointer_width = "64"))]
     old_swapchain: u64,
 }

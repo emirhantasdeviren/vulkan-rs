@@ -81,24 +81,24 @@ pub struct CommandPool<'a> {
     _marker: PhantomData<ffi::OpaqueCommandPool>,
 }
 
-pub struct SurfaceKHR<'a> {
+pub struct SurfaceKhr<'a> {
     #[cfg(target_pointer_width = "64")]
-    handle: NonNull<ffi::OpaqueSurfaceKHR>,
+    handle: NonNull<ffi::OpaqueSurfaceKhr>,
     #[cfg(not(target_pointer_width = "64"))]
     handle: NonZeroU64,
     instance: &'a Instance,
     #[cfg(target_pointer_width = "64")]
-    _marker: PhantomData<ffi::OpaqueSurfaceKHR>,
+    _marker: PhantomData<ffi::OpaqueSurfaceKhr>,
 }
 
-pub struct SwapchainKHR<'a> {
+pub struct SwapchainKhr<'a> {
     #[cfg(target_pointer_width = "64")]
-    handle: NonNull<ffi::OpaqueSwapchainKHR>,
+    handle: NonNull<ffi::OpaqueSwapchainKhr>,
     #[cfg(not(target_pointer_width = "64"))]
     handle: NonZeroU64,
     device: &'a Device<'a>,
     #[cfg(target_pointer_width = "64")]
-    _marker: PhantomData<ffi::OpaqueSwapchainKHR>,
+    _marker: PhantomData<ffi::OpaqueSwapchainKhr>,
 }
 
 #[derive(Default)]
@@ -586,12 +586,12 @@ impl Instance {
         }
     }
 
-    pub fn create_surface_khr(&self, window: &impl HasRawWindowHandle) -> SurfaceKHR<'_> {
+    pub fn create_surface_khr(&self, window: &impl HasRawWindowHandle) -> SurfaceKhr<'_> {
         match window.raw_window_handle() {
             #[cfg(target_os = "windows")]
             RawWindowHandle::Windows(window_handle) => {
-                let create_info = ffi::Win32SurfaceCreateInfoKHR {
-                    s_type: ffi::StructureType::Win32SurfaceCreateInfoKHR,
+                let create_info = ffi::Win32SurfaceCreateInfoKhr {
+                    s_type: ffi::StructureType::Win32SurfaceCreateInfoKhr,
                     p_next: std::ptr::null(),
                     flags: 0,
                     hinstance: window_handle.hinstance.cast(),
@@ -609,7 +609,7 @@ impl Instance {
                 };
 
                 if result == ffi::Result::Success {
-                    SurfaceKHR {
+                    SurfaceKhr {
                         #[cfg(target_pointer_width = "64")]
                         handle: unsafe { NonNull::new_unchecked(handle.assume_init()) },
                         #[cfg(not(target_pointer_width = "64"))]
@@ -630,8 +630,8 @@ impl Instance {
                 target_os = "openbsd"
             ))]
             RawWindowHandle::Xcb(window_handle) => {
-                let create_info = ffi::XcbSurfaceCreateInfoKHR {
-                    s_type: ffi::StructureType::XcbSurfaceCreateInfoKHR,
+                let create_info = ffi::XcbSurfaceCreateInfoKhr {
+                    s_type: ffi::StructureType::XcbSurfaceCreateInfoKhr,
                     p_next: std::ptr::null(),
                     flags: 0,
                     connection: window_handle.connection.cast(),
@@ -649,7 +649,7 @@ impl Instance {
                 };
 
                 if result == ffi::Result::Success {
-                    SurfaceKHR {
+                    SurfaceKhr {
                         #[cfg(target_pointer_width = "64")]
                         handle: unsafe { NonNull::new_unchecked(handle.assume_init()) },
                         #[cfg(not(target_pointer_width = "64"))]
@@ -670,8 +670,8 @@ impl Instance {
                 target_os = "openbsd"
             ))]
             RawWindowHandle::Xlib(window_handle) => {
-                let create_info = ffi::XlibSurfaceCreateInfoKHR {
-                    s_type: ffi::StructureType::XlibSurfaceCreateInfoKHR,
+                let create_info = ffi::XlibSurfaceCreateInfoKhr {
+                    s_type: ffi::StructureType::XlibSurfaceCreateInfoKhr,
                     p_next: std::ptr::null(),
                     flags: 0,
                     dpy: window_handle.display.cast(),
@@ -689,7 +689,7 @@ impl Instance {
                 };
 
                 if result == ffi::Result::Success {
-                    SurfaceKHR {
+                    SurfaceKhr {
                         #[cfg(target_pointer_width = "64")]
                         handle: unsafe { NonNull::new_unchecked(handle.assume_init()) },
                         #[cfg(not(target_pointer_width = "64"))]
@@ -1002,7 +1002,7 @@ impl<'a> Drop for CommandPool<'a> {
     }
 }
 
-impl<'a> Drop for SurfaceKHR<'a> {
+impl<'a> Drop for SurfaceKhr<'a> {
     fn drop(&mut self) {
         println!("Dropped SurfaceKHR");
         unsafe {
