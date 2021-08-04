@@ -1034,6 +1034,7 @@ pub struct SwapchainCreateInfoKhr {
     image_array_layers: u32,
     image_usage: ImageUsageFlags,
     image_sharing_mode: SharingMode,
+    queue_family_index_count: u32,
     queue_family_indices: *const u32,
     pre_transform: SurfaceTransformFlagBitsKhr,
     composite_alpha: CompositeAlphaFlagBitsKhr,
