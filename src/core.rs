@@ -428,6 +428,25 @@ pub enum Format {
     A4b4g4r4UnormPack16Ext,
 }
 
+pub enum ColorSpaceKhr {
+    SrgbNonlinearKhr,
+    DisplayP3NonlinearExt,
+    ExtendedSrgbLinearExt,
+    DisplayP3LinearExt,
+    DciP3NonlinearExt,
+    Bt709LinearExt,
+    Bt709NonlinearExt,
+    Bt2020LinearExt,
+    Hdr10St2084Ext,
+    DolbyvisionExt,
+    Hdr10HlgExt,
+    AdobergbLinearExt,
+    AdobergbNonlinearExt,
+    PassThroughExt,
+    ExtendedSrgbNonlinearExt,
+    DisplayNativeAmd,
+}
+
 #[derive(Default, Clone, Copy)]
 pub struct ApiVersion(u32);
 
