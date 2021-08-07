@@ -447,6 +447,11 @@ pub enum ColorSpaceKhr {
     DisplayNativeAmd,
 }
 
+pub enum SharingMode<'a> {
+    Exclusive,
+    Concurrent(&'a [usize]),
+}
+
 #[derive(Default, Clone, Copy)]
 pub struct ApiVersion(u32);
 
