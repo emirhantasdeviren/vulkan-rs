@@ -464,6 +464,13 @@ pub enum SurfaceTransformKhr {
     InheritKhr,
 }
 
+pub enum CompositeAlphaKhr {
+    OpaqueKhr,
+    PreMultipliedKhr,
+    PostMultipliedKhr,
+    InheritKhr,
+}
+
 #[derive(Default, Clone, Copy)]
 pub struct ApiVersion(u32);
 
