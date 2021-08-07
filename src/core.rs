@@ -452,6 +452,18 @@ pub enum SharingMode<'a> {
     Concurrent(&'a [usize]),
 }
 
+pub enum SurfaceTransformKhr {
+    IdentityKhr,
+    Rotate90Khr,
+    Rotate180Khr,
+    Rotate270Khr,
+    HorizontalMirrorKhr,
+    HorizontalMirrorRotate90Khr,
+    HorizontalMirrorRotate180Khr,
+    HorizontalMirrorRotate270Khr,
+    InheritKhr,
+}
+
 #[derive(Default, Clone, Copy)]
 pub struct ApiVersion(u32);
 
