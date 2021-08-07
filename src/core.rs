@@ -471,6 +471,11 @@ pub enum CompositeAlphaKhr {
     InheritKhr,
 }
 
+pub struct Extent2D {
+    width: u32,
+    height: u32,
+}
+
 #[derive(Default, Clone, Copy)]
 pub struct ApiVersion(u32);
 
