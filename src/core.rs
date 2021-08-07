@@ -476,10 +476,26 @@ pub struct Extent2D {
     height: u32,
 }
 
+#[derive(Default)]
 pub struct SwapchainCreateOptionsKhr {
     pub split_instance_bind_regions: bool,
     pub protected: bool,
     pub mutable_format: bool,
+}
+
+#[derive(Default)]
+pub struct ImageUsage {
+    pub transfer_src: bool,
+    pub transfer_dst: bool,
+    pub sampled: bool,
+    pub storage: bool,
+    pub color_attachment: bool,
+    pub depth_stencil_attachment: bool,
+    pub transient_attachment: bool,
+    pub input_attachment: bool,
+    pub fragment_density_map_ext: bool,
+    pub fragment_shading_rate_attachment_khr: bool,
+    pub invocation_mask_huawei: bool,
 }
 
 pub struct SwapchainCreateInfoKhr<'a> {
@@ -490,7 +506,7 @@ pub struct SwapchainCreateInfoKhr<'a> {
     pub image_color_space: ColorSpaceKhr,
     pub image_extent: Extent2D,
     pub image_array_layers: u32,
-    pub image_usage: u32, // TODO
+    pub image_usage: ImageUsage,
     pub image_sharing_mode: SharingMode<'a>,
     pub pre_transform: SurfaceTransformKhr,
     pub composite_alpha: CompositeAlphaKhr,
