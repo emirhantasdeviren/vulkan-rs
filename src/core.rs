@@ -476,6 +476,28 @@ pub struct Extent2D {
     height: u32,
 }
 
+pub struct SwapchainCreateOptionsKhr {
+    pub split_instance_bind_regions: bool,
+    pub protected: bool,
+    pub mutable_format: bool,
+}
+
+pub struct SwapchainCreateInfoKhr<'a> {
+    pub options: SwapchainCreateOptionsKhr,
+    pub surface: &'a SurfaceKhr<'a>,
+    pub min_image_count: u32,
+    pub image_format: Format,
+    pub image_color_space: ColorSpaceKhr,
+    pub image_extent: Extent2D,
+    pub image_array_layers: u32,
+    pub image_usage: u32, // TODO
+    pub image_sharing_mode: SharingMode<'a>,
+    pub pre_transform: SurfaceTransformKhr,
+    pub composite_alpha: CompositeAlphaKhr,
+    pub clipped: bool,
+    pub old_swapchain: Option<()>,
+}
+
 #[derive(Default, Clone, Copy)]
 pub struct ApiVersion(u32);
 
