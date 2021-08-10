@@ -1029,6 +1029,22 @@ pub enum CompositeAlphaFlagBitsKhr {
     PostMultipliedBitKhr = 0x00000004,
     InheritBitKhr = 0x00000008,
 }
+pub type CompositeAlphaFlagsKhr = Flags;
+pub type SurfaceTransformFlagsKhr = Flags;
+
+#[repr(C)]
+pub struct SurfaceCapabilitiesKhr {
+    pub min_image_count: u32,
+    pub max_image_count: u32,
+    pub current_extent: Extent2D,
+    pub min_image_extent: Extent2D,
+    pub max_image_extent: Extent2D,
+    pub max_image_array_layers: u32,
+    pub supported_transforms: SurfaceTransformFlagsKhr,
+    pub current_transform: SurfaceTransformFlagBitsKhr,
+    pub supported_composite_alpha: CompositeAlphaFlagsKhr,
+    pub supported_usage_flags: ImageUsageFlags,
+}
 
 #[repr(i32)]
 pub enum PresentModeKhr {
