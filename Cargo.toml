@@ -8,3 +8,6 @@ edition = "2018"
 
 [dependencies]
 raw-window-handle = "0.3"
+
+[dev-dependencies]
+winit = { version = "0.25", default-features = false, features = ["x11"] }
