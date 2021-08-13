@@ -137,6 +137,8 @@ struct DispatchLoaderPhysicalDevice {
         ffi::PFN_vkGetPhysicalDeviceQueueFamilyProperties,
     vk_create_device: ffi::PFN_vkCreateDevice,
     vk_get_device_proc_addr: ffi::PFN_vkGetDeviceProcAddr,
+    vk_get_physical_device_surface_capabilities_khr:
+        Option<ffi::PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>,
 }
 
 struct DispatchLoaderDevice {
@@ -452,6 +454,7 @@ pub enum SharingMode<'a> {
     Concurrent(&'a [usize]),
 }
 
+#[derive(Debug)]
 pub enum SurfaceTransformKhr {
     IdentityKhr,
     Rotate90Khr,
@@ -469,6 +472,19 @@ pub enum CompositeAlphaKhr {
     PreMultipliedKhr,
     PostMultipliedKhr,
     InheritKhr,
+}
+
+pub struct SurfaceCapabilitiesKhr {
+    pub min_image_count: u32,
+    pub max_image_count: u32,
+    pub current_extent: Extent2D,
+    pub min_image_extent: Extent2D,
+    pub max_image_extent: Extent2D,
+    pub max_image_array_layers: u32,
+    supported_transforms: u32,
+    pub current_transform: SurfaceTransformKhr,
+    supported_composite_alpha: u32,
+    supported_usage_flags: u32,
 }
 
 pub struct Extent2D {
@@ -987,6 +1003,59 @@ impl<'a> PhysicalDevice<'a> {
             panic!("Could not create logical device. {:?}", result);
         }
     }
+
+    pub fn get_surface_capabilities_khr(
+        &self,
+        surface: &SurfaceKhr,
+    ) -> Option<Result<SurfaceCapabilitiesKhr>> {
+        let mut surface_capabilities = MaybeUninit::uninit();
+        let result = unsafe {
+            (self
+                .dispatch_loader
+                .vk_get_physical_device_surface_capabilities_khr?)(
+                #[cfg(target_pointer_width = "64")]
+                self.handle.as_ptr(),
+                #[cfg(not(target_pointer_width = "64"))]
+                self.handle.get(),
+                surface.handle.as_ptr(),
+                surface_capabilities.as_mut_ptr(),
+            )
+        };
+
+        match result {
+            ffi::Result::Success => {
+                let ffi::SurfaceCapabilitiesKhr {
+                    min_image_count,
+                    max_image_count,
+                    current_extent,
+                    min_image_extent,
+                    max_image_extent,
+                    max_image_array_layers,
+                    supported_transforms,
+                    current_transform,
+                    supported_composite_alpha,
+                    supported_usage_flags,
+                } = unsafe { surface_capabilities.assume_init() };
+
+                Some(Ok(SurfaceCapabilitiesKhr {
+                    min_image_count,
+                    max_image_count,
+                    current_extent: current_extent.into(),
+                    min_image_extent: min_image_extent.into(),
+                    max_image_extent: max_image_extent.into(),
+                    max_image_array_layers,
+                    supported_transforms,
+                    current_transform: current_transform.into(),
+                    supported_composite_alpha,
+                    supported_usage_flags,
+                }))
+            }
+            ffi::Result::ErrorOutOfHostMemory => Some(Err(Error::OutOfHostMemory)),
+            ffi::Result::ErrorOutOfDeviceMemory => Some(Err(Error::OutOfDeviceMemory)),
+            ffi::Result::ErrorSurfaceLostKhr => Some(Err(Error::SurfaceLostKhr)),
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl<'a> Device<'a> {
@@ -1263,6 +1332,13 @@ impl DispatchLoaderPhysicalDevice {
                 )
                 .map(|pfn| std::mem::transmute(pfn))
                 .unwrap(),
+                vk_get_physical_device_surface_capabilities_khr: vk_get_instance_proc_addr(
+                    instance.handle.as_ptr(),
+                    "vkGetPhysicalDeviceSurfaceCapabilitiesKHR\0"
+                        .as_ptr()
+                        .cast(),
+                )
+                .map(|pfn| std::mem::transmute(pfn)),
             }
         }
     }
@@ -1364,5 +1440,36 @@ impl ApiVersion {
 impl std::fmt::Display for ApiVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}.{}.{}", self.major(), self.minor(), self.patch())
+    }
+}
+
+impl From<ffi::Extent2D> for Extent2D {
+    fn from(extent: ffi::Extent2D) -> Self {
+        Self {
+            width: extent.width,
+            height: extent.height,
+        }
+    }
+}
+
+impl From<ffi::SurfaceTransformFlagBitsKhr> for SurfaceTransformKhr {
+    fn from(composite_alpha: ffi::SurfaceTransformFlagBitsKhr) -> Self {
+        match composite_alpha {
+            ffi::SurfaceTransformFlagBitsKhr::IdentityBitKhr => Self::IdentityKhr,
+            ffi::SurfaceTransformFlagBitsKhr::Rotate90BitKhr => Self::Rotate90Khr,
+            ffi::SurfaceTransformFlagBitsKhr::Rotate180BitKhr => Self::Rotate180Khr,
+            ffi::SurfaceTransformFlagBitsKhr::Rotate270BitKhr => Self::Rotate270Khr,
+            ffi::SurfaceTransformFlagBitsKhr::HorizontalMirrorBitKhr => Self::HorizontalMirrorKhr,
+            ffi::SurfaceTransformFlagBitsKhr::HorizontalMirrorRotate90BitKhr => {
+                Self::HorizontalMirrorRotate90Khr
+            }
+            ffi::SurfaceTransformFlagBitsKhr::HorizontalMirrorRotate180BitKhr => {
+                Self::HorizontalMirrorRotate180Khr
+            }
+            ffi::SurfaceTransformFlagBitsKhr::HorizontalMirrorRotate270BitKhr => {
+                Self::HorizontalMirrorRotate270Khr
+            }
+            ffi::SurfaceTransformFlagBitsKhr::InheritBitKhr => Self::InheritKhr,
+        }
     }
 }

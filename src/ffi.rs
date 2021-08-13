@@ -157,8 +157,8 @@ pub enum CommandBufferLevel {
 
 #[repr(C)]
 pub struct Extent2D {
-    width: u32,
-    height: u32,
+    pub width: u32,
+    pub height: u32,
 }
 
 #[repr(C)]
@@ -291,6 +291,12 @@ pub type PFN_vkDestroySurfaceKHR = unsafe extern "system" fn(
     #[cfg(not(target_pointer_width = "64"))] surface: u64,
     p_allocator: *const AllocationCallbacks,
 );
+pub type PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR = unsafe extern "system" fn(
+    physical_device: *mut OpaquePhysicalDevice,
+    #[cfg(target_pointer_width = "64")] surface: *mut OpaqueSurfaceKhr,
+    #[cfg(not(target_pointer_width = "64"))] surface: u64,
+    p_surface_capabilities: *mut SurfaceCapabilitiesKhr,
+) -> self::Result;
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;

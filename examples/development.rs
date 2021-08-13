@@ -1,9 +1,9 @@
 use vulkan_rs::core as vk;
 
-use winit::event_loop::{ControlFlow, EventLoop};
-use winit::window::WindowBuilder;
 use winit::event::{Event, WindowEvent};
+use winit::event_loop::{ControlFlow, EventLoop};
 use winit::platform::run_return::EventLoopExtRunReturn;
+use winit::window::WindowBuilder;
 
 fn main() {
     let app_info = vk::ApplicationInfo {
@@ -44,7 +44,19 @@ fn main() {
         .build(&event_loop)
         .unwrap();
 
-    let _surface = instance.create_surface_khr(&window);
+    let surface = instance.create_surface_khr(&window);
+    let surface_capabilities = physical_device.get_surface_capabilities_khr(&surface);
+
+    match surface_capabilities {
+        Some(res) => match res {
+            Ok(capabilities) => println!(
+                "{}, {}\n{:?}",
+                capabilities.min_image_count, capabilities.max_image_count, capabilities.current_transform
+            ),
+            Err(e) => panic!("{}: {:?}", e, e),
+        },
+        None => panic!("OH NO"),
+    }
 
     event_loop.run_return(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
