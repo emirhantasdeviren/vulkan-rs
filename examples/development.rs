@@ -50,13 +50,13 @@ fn main() {
     match surface_capabilities {
         Some(res) => match res {
             Ok(capabilities) => println!(
-                "{}, {}\n{:?}\n{}",
+                "min_image_count: {}\nmax_image_count: {}\ncurrent_transform: {:?}\nsupported_composite_alpha: {}",
                 capabilities.min_image_count,
                 capabilities.max_image_count,
                 capabilities.current_transform,
                 capabilities
-                    .supported_transforms
-                    .contains(vk::SurfaceTransformKhr::InheritKhr),
+                    .supported_composite_alpha
+                    .contains(vk::CompositeAlphaKhr::OpaqueKhr),
             ),
             Err(e) => panic!("{}: {:?}", e, e),
         },

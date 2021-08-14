@@ -467,12 +467,16 @@ pub enum SurfaceTransformKhr {
     InheritKhr,
 }
 
+pub struct SurfaceTransformFlagsKhr(u32);
+
 pub enum CompositeAlphaKhr {
     OpaqueKhr,
     PreMultipliedKhr,
     PostMultipliedKhr,
     InheritKhr,
 }
+
+pub struct CompositeAlphaFlagsKhr(u32);
 
 pub struct SurfaceCapabilitiesKhr {
     pub min_image_count: u32,
@@ -483,11 +487,9 @@ pub struct SurfaceCapabilitiesKhr {
     pub max_image_array_layers: u32,
     pub supported_transforms: SurfaceTransformFlagsKhr,
     pub current_transform: SurfaceTransformKhr,
-    supported_composite_alpha: u32,
+    pub supported_composite_alpha: CompositeAlphaFlagsKhr,
     supported_usage_flags: u32,
 }
-
-pub struct SurfaceTransformFlagsKhr(u32);
 
 pub struct Extent2D {
     width: u32,
@@ -1048,7 +1050,7 @@ impl<'a> PhysicalDevice<'a> {
                     max_image_array_layers,
                     supported_transforms: SurfaceTransformFlagsKhr(supported_transforms),
                     current_transform: current_transform.into(),
-                    supported_composite_alpha,
+                    supported_composite_alpha: CompositeAlphaFlagsKhr(supported_composite_alpha),
                     supported_usage_flags,
                 }))
             }
@@ -1498,9 +1500,28 @@ impl From<SurfaceTransformKhr> for ffi::SurfaceTransformFlagBitsKhr {
     }
 }
 
+impl From<CompositeAlphaKhr> for ffi::CompositeAlphaFlagBitsKhr {
+    fn from(composite_alpha: CompositeAlphaKhr) -> Self {
+        match composite_alpha {
+            CompositeAlphaKhr::OpaqueKhr => Self::OpaqueBitKhr,
+            CompositeAlphaKhr::PreMultipliedKhr => Self::PreMultipliedBitKhr,
+            CompositeAlphaKhr::PostMultipliedKhr => Self::PostMultipliedBitKhr,
+            CompositeAlphaKhr::InheritKhr => Self::InheritBitKhr,
+        }
+    }
+}
+
 impl SurfaceTransformFlagsKhr {
     pub fn contains(&self, flag: SurfaceTransformKhr) -> bool {
         let flag = ffi::SurfaceTransformFlagBitsKhr::from(flag);
+
+        self.0 & (flag as u32) != 0
+    }
+}
+
+impl CompositeAlphaFlagsKhr {
+    pub fn contains(&self, flag: CompositeAlphaKhr) -> bool {
+        let flag = ffi::CompositeAlphaFlagBitsKhr::from(flag);
 
         self.0 & (flag as u32) != 0
     }
