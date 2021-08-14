@@ -305,7 +305,6 @@ type DeviceQueueCreateFlags = Flags;
 type DeviceCreateFlags = Flags;
 type CommandPoolCreateFlags = Flags;
 type SemaphoreCreateFlags = Flags;
-type SwapchainCreateFlagsKhr = Flags;
 type ImageUsageFlags = Flags;
 #[cfg(any(
     target_os = "linux",
@@ -1061,6 +1060,14 @@ pub enum PresentModeKhr {
     SharedDemandRefreshKhr = 1000111000,
     SharedContinuousRefreshKhr = 1000111001,
 }
+
+#[repr(i32)]
+pub enum SwapchainCreateFlagBitsKhr {
+    SplitInstanceBindRegionsBitKhr = 0x00000001,
+    ProtectedBitKhr = 0x00000002,
+    MutableFormatBitKhr = 0x00000004,
+}
+pub type SwapchainCreateFlagsKhr = Flags;
 
 #[repr(C)]
 pub struct SwapchainCreateInfoKhr {

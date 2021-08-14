@@ -497,13 +497,6 @@ pub struct Extent2D {
 }
 
 #[derive(Default)]
-pub struct SwapchainCreateOptionsKhr {
-    pub split_instance_bind_regions: bool,
-    pub protected: bool,
-    pub mutable_format: bool,
-}
-
-#[derive(Default)]
 pub struct ImageUsage {
     pub transfer_src: bool,
     pub transfer_dst: bool,
@@ -518,8 +511,18 @@ pub struct ImageUsage {
     pub invocation_mask_huawei: bool,
 }
 
+pub enum SwapchainCreateKhr {
+    SplitInstanceBindRegionsKhr,
+    ProtectedKhr,
+    MutableFormatKhr,
+}
+#[derive(Debug, Default)]
+pub struct SwapchainCreateFlagsKhr(u32);
+#[derive(Default)]
+pub struct SwapchainCreateFlagsBuilderKhr(u32);
+
 pub struct SwapchainCreateInfoKhr<'a> {
-    pub options: SwapchainCreateOptionsKhr,
+    pub flags: SwapchainCreateFlagsKhr,
     pub surface: &'a SurfaceKhr<'a>,
     pub min_image_count: u32,
     pub image_format: Format,
@@ -1524,5 +1527,36 @@ impl CompositeAlphaFlagsKhr {
         let flag = ffi::CompositeAlphaFlagBitsKhr::from(flag);
 
         self.0 & (flag as u32) != 0
+    }
+}
+
+impl SwapchainCreateFlagsBuilderKhr {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn split_instance_bind_regions(&mut self, val: bool) -> &mut Self {
+        if val {
+            self.0 |= ffi::SwapchainCreateFlagBitsKhr::SplitInstanceBindRegionsBitKhr as u32;
+        }
+        self
+    }
+
+    pub fn protected(&mut self, val: bool) -> &mut Self {
+        if val {
+            self.0 |= ffi::SwapchainCreateFlagBitsKhr::ProtectedBitKhr as u32;
+        }
+        self
+    }
+
+    pub fn mutable_format(&mut self, val: bool) -> &mut Self {
+        if val {
+            self.0 |= ffi::SwapchainCreateFlagBitsKhr::MutableFormatBitKhr as u32;
+        }
+        self
+    }
+
+    pub fn build(&self) -> SwapchainCreateFlagsKhr {
+        SwapchainCreateFlagsKhr(self.0)
     }
 }
