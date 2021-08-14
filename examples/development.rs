@@ -1,6 +1,6 @@
 use vulkan_rs::core as vk;
 
-use winit::event::{Event, WindowEvent};
+use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::platform::run_return::EventLoopExtRunReturn;
 use winit::window::WindowBuilder;
@@ -15,7 +15,7 @@ fn main() {
     };
     let extensions = &[
         vk::KHR_SURFACE_EXTENSION_NAME,
-        vk::KHR_XLIB_SURFACE_EXTENSION_NAME,
+        vk::KHR_WIN32_SURFACE_EXTENSION_NAME,
     ];
     let instance = vk::Instance::new(Some(&app_info), None, Some(extensions)).unwrap();
 
@@ -50,8 +50,13 @@ fn main() {
     match surface_capabilities {
         Some(res) => match res {
             Ok(capabilities) => println!(
-                "{}, {}\n{:?}",
-                capabilities.min_image_count, capabilities.max_image_count, capabilities.current_transform
+                "{}, {}\n{:?}\n{}",
+                capabilities.min_image_count,
+                capabilities.max_image_count,
+                capabilities.current_transform,
+                capabilities
+                    .supported_transforms
+                    .contains(vk::SurfaceTransformKhr::InheritKhr),
             ),
             Err(e) => panic!("{}: {:?}", e, e),
         },
@@ -62,13 +67,19 @@ fn main() {
         *control_flow = ControlFlow::Poll;
 
         match event {
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                ..
-            } => {
-                println!("The close button was pressed; stopping");
-                *control_flow = ControlFlow::Exit;
-            }
+            Event::WindowEvent { ref event, .. } => match event {
+                WindowEvent::CloseRequested
+                | WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::Escape),
+                            ..
+                        },
+                    ..
+                } => *control_flow = ControlFlow::Exit,
+                _ => (),
+            },
             _ => (),
         }
     });

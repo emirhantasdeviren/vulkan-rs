@@ -481,11 +481,13 @@ pub struct SurfaceCapabilitiesKhr {
     pub min_image_extent: Extent2D,
     pub max_image_extent: Extent2D,
     pub max_image_array_layers: u32,
-    supported_transforms: u32,
+    pub supported_transforms: SurfaceTransformFlagsKhr,
     pub current_transform: SurfaceTransformKhr,
     supported_composite_alpha: u32,
     supported_usage_flags: u32,
 }
+
+pub struct SurfaceTransformFlagsKhr(u32);
 
 pub struct Extent2D {
     width: u32,
@@ -1044,7 +1046,7 @@ impl<'a> PhysicalDevice<'a> {
                     min_image_extent: min_image_extent.into(),
                     max_image_extent: max_image_extent.into(),
                     max_image_array_layers,
-                    supported_transforms,
+                    supported_transforms: SurfaceTransformFlagsKhr(supported_transforms),
                     current_transform: current_transform.into(),
                     supported_composite_alpha,
                     supported_usage_flags,
@@ -1471,5 +1473,35 @@ impl From<ffi::SurfaceTransformFlagBitsKhr> for SurfaceTransformKhr {
             }
             ffi::SurfaceTransformFlagBitsKhr::InheritBitKhr => Self::InheritKhr,
         }
+    }
+}
+
+impl From<SurfaceTransformKhr> for ffi::SurfaceTransformFlagBitsKhr {
+    fn from(composite_alpha: SurfaceTransformKhr) -> Self {
+        match composite_alpha {
+            SurfaceTransformKhr::IdentityKhr => Self::IdentityBitKhr,
+            SurfaceTransformKhr::Rotate90Khr => Self::Rotate90BitKhr,
+            SurfaceTransformKhr::Rotate180Khr => Self::Rotate180BitKhr,
+            SurfaceTransformKhr::Rotate270Khr => Self::Rotate270BitKhr,
+            SurfaceTransformKhr::HorizontalMirrorKhr => Self::HorizontalMirrorBitKhr,
+            SurfaceTransformKhr::HorizontalMirrorRotate90Khr => {
+                Self::HorizontalMirrorRotate90BitKhr
+            }
+            SurfaceTransformKhr::HorizontalMirrorRotate180Khr => {
+                Self::HorizontalMirrorRotate180BitKhr
+            }
+            SurfaceTransformKhr::HorizontalMirrorRotate270Khr => {
+                Self::HorizontalMirrorRotate270BitKhr
+            }
+            SurfaceTransformKhr::InheritKhr => Self::InheritBitKhr,
+        }
+    }
+}
+
+impl SurfaceTransformFlagsKhr {
+    pub fn contains(&self, flag: SurfaceTransformKhr) -> bool {
+        let flag = ffi::SurfaceTransformFlagBitsKhr::from(flag);
+
+        self.0 & (flag as u32) != 0
     }
 }
