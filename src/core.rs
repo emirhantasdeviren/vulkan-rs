@@ -1455,8 +1455,8 @@ impl From<ffi::Extent2D> for Extent2D {
 }
 
 impl From<ffi::SurfaceTransformFlagBitsKhr> for SurfaceTransformKhr {
-    fn from(composite_alpha: ffi::SurfaceTransformFlagBitsKhr) -> Self {
-        match composite_alpha {
+    fn from(surface_transform: ffi::SurfaceTransformFlagBitsKhr) -> Self {
+        match surface_transform {
             ffi::SurfaceTransformFlagBitsKhr::IdentityBitKhr => Self::IdentityKhr,
             ffi::SurfaceTransformFlagBitsKhr::Rotate90BitKhr => Self::Rotate90Khr,
             ffi::SurfaceTransformFlagBitsKhr::Rotate180BitKhr => Self::Rotate180Khr,
@@ -1477,8 +1477,8 @@ impl From<ffi::SurfaceTransformFlagBitsKhr> for SurfaceTransformKhr {
 }
 
 impl From<SurfaceTransformKhr> for ffi::SurfaceTransformFlagBitsKhr {
-    fn from(composite_alpha: SurfaceTransformKhr) -> Self {
-        match composite_alpha {
+    fn from(surface_transform: SurfaceTransformKhr) -> Self {
+        match surface_transform {
             SurfaceTransformKhr::IdentityKhr => Self::IdentityBitKhr,
             SurfaceTransformKhr::Rotate90Khr => Self::Rotate90BitKhr,
             SurfaceTransformKhr::Rotate180Khr => Self::Rotate180BitKhr,
