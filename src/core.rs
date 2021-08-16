@@ -1405,20 +1405,20 @@ impl DispatchLoaderDevice {
 }
 
 impl QueueFamilyProperties {
-    pub fn graphics(&self) -> bool {
-        (self.queue_flags & 0x00000001) != 0
+    pub fn supports_graphics(&self) -> bool {
+        self.queue_flags & ffi::QueueFlagBits::GraphicsBit as u32 != 0
     }
 
-    pub fn compute(&self) -> bool {
-        (self.queue_flags & 0x00000002) != 0
+    pub fn supports_compute(&self) -> bool {
+        self.queue_flags & ffi::QueueFlagBits::ComputeBit as u32 != 0
     }
 
-    pub fn transfer(&self) -> bool {
-        (self.queue_flags & 0x00000004) != 0
+    pub fn supports_transfer(&self) -> bool {
+        self.queue_flags & ffi::QueueFlagBits::TransferBit as u32 != 0
     }
 
-    pub fn sparse_binding(&self) -> bool {
-        (self.queue_flags & 0x00000008) != 0
+    pub fn supports_sparse_binding(&self) -> bool {
+        self.queue_flags & ffi::QueueFlagBits::SparseBindingBit as u32 != 0
     }
 }
 

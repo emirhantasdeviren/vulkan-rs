@@ -300,7 +300,6 @@ pub type PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR = unsafe extern "system" 
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;
-pub type QueueFlags = Flags;
 type DeviceQueueCreateFlags = Flags;
 type DeviceCreateFlags = Flags;
 type CommandPoolCreateFlags = Flags;
@@ -1036,6 +1035,16 @@ pub enum CompositeAlphaFlagBitsKhr {
 }
 pub type CompositeAlphaFlagsKhr = Flags;
 pub type SurfaceTransformFlagsKhr = Flags;
+
+#[repr(i32)]
+pub enum QueueFlagBits {
+    GraphicsBit = 0x00000001,
+    ComputeBit = 0x00000002,
+    TransferBit = 0x00000004,
+    SparseBindingBit = 0x00000008,
+    ProtectedBit = 0x00000010,
+}
+pub type QueueFlags = Flags;
 
 #[repr(C)]
 pub struct SurfaceCapabilitiesKhr {

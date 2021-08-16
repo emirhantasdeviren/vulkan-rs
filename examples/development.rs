@@ -40,7 +40,9 @@ fn main() {
 
     let mut event_loop = EventLoop::new();
     let window = WindowBuilder::new()
+        .with_title("Hello Triangle")
         .with_resizable(false)
+        .with_inner_size(winit::dpi::PhysicalSize::new(1280, 720))
         .build(&event_loop)
         .unwrap();
 
@@ -58,7 +60,7 @@ fn main() {
                     .supported_composite_alpha
                     .contains(vk::CompositeAlphaKhr::OpaqueKhr),
             ),
-            Err(e) => panic!("{}: {:?}", e, e),
+            Err(e) => panic!("{0}: {0:?}", e),
         },
         None => panic!("OH NO"),
     }
