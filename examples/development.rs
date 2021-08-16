@@ -56,9 +56,7 @@ fn main() {
                 capabilities.min_image_count,
                 capabilities.max_image_count,
                 capabilities.current_transform,
-                capabilities
-                    .supported_composite_alpha
-                    .contains(vk::CompositeAlphaKhr::OpaqueKhr),
+                capabilities.supported_usage_flags.contains(vk::ImageUsage::ColorAttachment),
             ),
             Err(e) => panic!("{0}: {0:?}", e),
         },

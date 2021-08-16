@@ -488,7 +488,7 @@ pub struct SurfaceCapabilitiesKhr {
     pub supported_transforms: SurfaceTransformFlagsKhr,
     pub current_transform: SurfaceTransformKhr,
     pub supported_composite_alpha: CompositeAlphaFlagsKhr,
-    supported_usage_flags: u32,
+    pub supported_usage_flags: ImageUsageFlags,
 }
 
 pub struct Extent2D {
@@ -1066,7 +1066,7 @@ impl<'a> PhysicalDevice<'a> {
                     supported_transforms: SurfaceTransformFlagsKhr(supported_transforms),
                     current_transform: current_transform.into(),
                     supported_composite_alpha: CompositeAlphaFlagsKhr(supported_composite_alpha),
-                    supported_usage_flags,
+                    supported_usage_flags: ImageUsageFlags(supported_usage_flags),
                 }))
             }
             ffi::Result::ErrorOutOfHostMemory => Some(Err(Error::OutOfHostMemory)),
@@ -1570,6 +1570,31 @@ impl SwapchainCreateFlagsBuilderKhr {
 
     pub fn build(&self) -> SwapchainCreateFlagsKhr {
         SwapchainCreateFlagsKhr(self.0)
+    }
+}
+
+impl ImageUsageFlags {
+    pub fn contains(&self, flag: ImageUsage) -> bool {
+        let flag = ffi::ImageUsageFlagBits::from(flag);
+
+        self.0 & flag as u32 != 0
+    }
+}
+
+impl From<ImageUsage> for ffi::ImageUsageFlagBits {
+    fn from(image_usage: ImageUsage) -> Self {
+        match image_usage {
+            ImageUsage::TransferSrc => Self::TransferSrcBit,
+            ImageUsage::TransferDst => Self::TransferDstBit,
+            ImageUsage::Sampled => Self::SampledBit,
+            ImageUsage::Storage => Self::StorageBit,
+            ImageUsage::ColorAttachment => Self::ColorAttachmentBit,
+            ImageUsage::DepthStencilAttachment => Self::DepthStencilAttachmentBit,
+            ImageUsage::TransientAttachment => Self::TransientAttachmentBit,
+            ImageUsage::InputAttachment => Self::InputAttachmentBit,
+            ImageUsage::ShadingRateImageNv => Self::ShadingRateImageBitNv,
+            ImageUsage::FragmentDensityMapExt => Self::FragmentDensityMapBitExt,
+        } 
     }
 }
 
