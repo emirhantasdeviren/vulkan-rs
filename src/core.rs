@@ -496,20 +496,22 @@ pub struct Extent2D {
     height: u32,
 }
 
-#[derive(Default)]
-pub struct ImageUsage {
-    pub transfer_src: bool,
-    pub transfer_dst: bool,
-    pub sampled: bool,
-    pub storage: bool,
-    pub color_attachment: bool,
-    pub depth_stencil_attachment: bool,
-    pub transient_attachment: bool,
-    pub input_attachment: bool,
-    pub fragment_density_map_ext: bool,
-    pub fragment_shading_rate_attachment_khr: bool,
-    pub invocation_mask_huawei: bool,
+pub enum ImageUsage {
+    TransferSrc,
+    TransferDst,
+    Sampled,
+    Storage,
+    ColorAttachment,
+    DepthStencilAttachment,
+    TransientAttachment,
+    InputAttachment,
+    ShadingRateImageNv,
+    FragmentDensityMapExt,
 }
+#[derive(Debug, Default)]
+pub struct ImageUsageFlags(u32);
+#[derive(Default)]
+pub struct ImageUsageFlagsBuilder(u32);
 
 pub enum SwapchainCreateKhr {
     SplitInstanceBindRegionsKhr,
@@ -521,6 +523,15 @@ pub struct SwapchainCreateFlagsKhr(u32);
 #[derive(Default)]
 pub struct SwapchainCreateFlagsBuilderKhr(u32);
 
+pub enum PresentModeKhr {
+    ImmediateKhr,
+    MailboxKhr,
+    FifoKhr,
+    FifoRelaxedKhr,
+    SharedDemandRefreshKhr,
+    SharedContinuousRefreshKhr,
+}
+
 pub struct SwapchainCreateInfoKhr<'a> {
     pub flags: SwapchainCreateFlagsKhr,
     pub surface: &'a SurfaceKhr<'a>,
@@ -529,10 +540,11 @@ pub struct SwapchainCreateInfoKhr<'a> {
     pub image_color_space: ColorSpaceKhr,
     pub image_extent: Extent2D,
     pub image_array_layers: u32,
-    pub image_usage: ImageUsage,
+    pub image_usage: ImageUsageFlags,
     pub image_sharing_mode: SharingMode<'a>,
     pub pre_transform: SurfaceTransformKhr,
     pub composite_alpha: CompositeAlphaKhr,
+    pub present_mode: PresentModeKhr,
     pub clipped: bool,
     pub old_swapchain: Option<()>,
 }
@@ -1558,5 +1570,85 @@ impl SwapchainCreateFlagsBuilderKhr {
 
     pub fn build(&self) -> SwapchainCreateFlagsKhr {
         SwapchainCreateFlagsKhr(self.0)
+    }
+}
+
+impl ImageUsageFlagsBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn transfer_src(&mut self, transfer_src: bool) -> &mut Self {
+        if transfer_src {
+            self.0 |= ffi::ImageUsageFlagBits::TransferSrcBit as u32;
+        }
+        self
+    }
+
+    pub fn transfer_dst(&mut self, transfer_dst: bool) -> &mut Self {
+        if transfer_dst {
+            self.0 |= ffi::ImageUsageFlagBits::TransferDstBit as u32;
+        }
+        self
+    }
+
+    pub fn sampled(&mut self, sampled: bool) -> &mut Self {
+        if sampled {
+            self.0 |= ffi::ImageUsageFlagBits::SampledBit as u32;
+        }
+        self
+    }
+
+    pub fn storage(&mut self, storage: bool) -> &mut Self {
+        if storage {
+            self.0 |= ffi::ImageUsageFlagBits::StorageBit as u32;
+        }
+        self
+    }
+
+    pub fn color_attachment(&mut self, color_attachment: bool) -> &mut Self {
+        if color_attachment {
+            self.0 |= ffi::ImageUsageFlagBits::ColorAttachmentBit as u32;
+        }
+        self
+    }
+
+    pub fn depth_stencil_attachment(&mut self, depth_stencil_attachment: bool) -> &mut Self {
+        if depth_stencil_attachment {
+            self.0 |= ffi::ImageUsageFlagBits::DepthStencilAttachmentBit as u32;
+        }
+        self
+    }
+
+    pub fn transient_attachment(&mut self, transient_attachment: bool) -> &mut Self {
+        if transient_attachment {
+            self.0 |= ffi::ImageUsageFlagBits::TransientAttachmentBit as u32;
+        }
+        self
+    }
+
+    pub fn input_attachment(&mut self, input_attachment: bool) -> &mut Self {
+        if input_attachment {
+            self.0 |= ffi::ImageUsageFlagBits::InputAttachmentBit as u32;
+        }
+        self
+    }
+
+    pub fn shading_rate_image_nv(&mut self, shading_rate_image_nv: bool) -> &mut Self {
+        if shading_rate_image_nv {
+            self.0 |= ffi::ImageUsageFlagBits::ShadingRateImageBitNv as u32;
+        }
+        self
+    }
+
+    pub fn fragment_density_map_ext(&mut self, fragment_density_map_ext: bool) -> &mut Self {
+        if fragment_density_map_ext {
+            self.0 |= ffi::ImageUsageFlagBits::FragmentDensityMapBitExt as u32;
+        }
+        self
+    }
+
+    pub fn build(&self) -> ImageUsageFlags {
+        ImageUsageFlags(self.0)
     }
 }

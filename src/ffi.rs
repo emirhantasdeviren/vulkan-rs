@@ -304,7 +304,6 @@ type DeviceQueueCreateFlags = Flags;
 type DeviceCreateFlags = Flags;
 type CommandPoolCreateFlags = Flags;
 type SemaphoreCreateFlags = Flags;
-type ImageUsageFlags = Flags;
 #[cfg(any(
     target_os = "linux",
     target_os = "dragonfly",
@@ -1035,6 +1034,21 @@ pub enum CompositeAlphaFlagBitsKhr {
 }
 pub type CompositeAlphaFlagsKhr = Flags;
 pub type SurfaceTransformFlagsKhr = Flags;
+
+#[repr(i32)]
+pub enum ImageUsageFlagBits {
+    TransferSrcBit = 0x00000001,
+    TransferDstBit = 0x00000002,
+    SampledBit = 0x00000004,
+    StorageBit = 0x00000008,
+    ColorAttachmentBit = 0x00000010,
+    DepthStencilAttachmentBit = 0x00000020,
+    TransientAttachmentBit = 0x00000040,
+    InputAttachmentBit = 0x00000080,
+    ShadingRateImageBitNv = 0x00000100,
+    FragmentDensityMapBitExt = 0x00000200,
+}
+pub type ImageUsageFlags = Flags;
 
 #[repr(i32)]
 pub enum QueueFlagBits {
