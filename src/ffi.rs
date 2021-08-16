@@ -297,6 +297,13 @@ pub type PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR = unsafe extern "system" 
     #[cfg(not(target_pointer_width = "64"))] surface: u64,
     p_surface_capabilities: *mut SurfaceCapabilitiesKhr,
 ) -> self::Result;
+pub type PFN_vkGetPhysicalDeviceSurfaceFormatsKHR = unsafe extern "system" fn(
+    physical_device: *mut OpaquePhysicalDevice,
+    #[cfg(target_pointer_width = "64")] surface: *mut OpaqueSurfaceKhr,
+    #[cfg(not(target_pointer_width = "64"))] surface: u64,
+    p_surface_format_count: *mut u32,
+    p_surface_formats: *mut SurfaceFormatKhr,
+) -> self::Result;
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;
@@ -1072,6 +1079,12 @@ pub struct SurfaceCapabilitiesKhr {
     pub current_transform: SurfaceTransformFlagBitsKhr,
     pub supported_composite_alpha: CompositeAlphaFlagsKhr,
     pub supported_usage_flags: ImageUsageFlags,
+}
+
+#[repr(C)]
+pub struct SurfaceFormatKhr {
+    pub format: Format,
+    pub color_space: ColorSpaceKhr,
 }
 
 #[repr(i32)]

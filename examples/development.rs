@@ -47,20 +47,11 @@ fn main() {
         .unwrap();
 
     let surface = instance.create_surface_khr(&window);
-    let surface_capabilities = physical_device.get_surface_capabilities_khr(&surface);
+    let surface_capabilities = physical_device.get_surface_capabilities_khr(&surface).unwrap().unwrap();
+    let surface_formats = physical_device.get_surface_formats_khr(&surface).unwrap().unwrap();
 
-    match surface_capabilities {
-        Some(res) => match res {
-            Ok(capabilities) => println!(
-                "min_image_count: {}\nmax_image_count: {}\ncurrent_transform: {:?}\nsupported_composite_alpha: {}",
-                capabilities.min_image_count,
-                capabilities.max_image_count,
-                capabilities.current_transform,
-                capabilities.supported_usage_flags.contains(vk::ImageUsage::ColorAttachment),
-            ),
-            Err(e) => panic!("{0}: {0:?}", e),
-        },
-        None => panic!("OH NO"),
+    for surface_format in surface_formats.iter() {
+        println!("{:?}", surface_format);
     }
 
     event_loop.run_return(move |event, _, control_flow| {

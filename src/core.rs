@@ -139,6 +139,8 @@ struct DispatchLoaderPhysicalDevice {
     vk_get_device_proc_addr: ffi::PFN_vkGetDeviceProcAddr,
     vk_get_physical_device_surface_capabilities_khr:
         Option<ffi::PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>,
+    vk_get_physical_device_surface_formats_khr:
+        Option<ffi::PFN_vkGetPhysicalDeviceSurfaceFormatsKHR>,
 }
 
 struct DispatchLoaderDevice {
@@ -180,6 +182,7 @@ pub struct QueueFamilyProperties {
     pub queue_count: u32,
 }
 
+#[derive(Debug)]
 pub enum Format {
     Undefined,
     R4g4UnormPack8,
@@ -430,6 +433,7 @@ pub enum Format {
     A4b4g4r4UnormPack16Ext,
 }
 
+#[derive(Debug)]
 pub enum ColorSpaceKhr {
     SrgbNonlinearKhr,
     DisplayP3NonlinearExt,
@@ -489,6 +493,12 @@ pub struct SurfaceCapabilitiesKhr {
     pub current_transform: SurfaceTransformKhr,
     pub supported_composite_alpha: CompositeAlphaFlagsKhr,
     pub supported_usage_flags: ImageUsageFlags,
+}
+
+#[derive(Debug)]
+pub struct SurfaceFormatKhr {
+    format: Format,
+    color_space: ColorSpaceKhr,
 }
 
 pub struct Extent2D {
@@ -1023,6 +1033,69 @@ impl<'a> PhysicalDevice<'a> {
         }
     }
 
+    pub fn get_surface_formats_khr(
+        &self,
+        surface: &SurfaceKhr,
+    ) -> Option<Result<Vec<SurfaceFormatKhr>>> {
+        let mut capacity = 0;
+        let vk_get_physical_device_surface_formats_khr = self
+            .dispatch_loader
+            .vk_get_physical_device_surface_formats_khr?;
+
+        let result = unsafe {
+            (vk_get_physical_device_surface_formats_khr)(
+                self.handle.as_ptr(),
+                #[cfg(target_pointer_width = "64")]
+                surface.handle.as_ptr(),
+                #[cfg(not(target_pointer_width = "64"))]
+                surface.handle.get(),
+                &mut capacity,
+                std::ptr::null_mut(),
+            )
+        };
+
+        Some(match result {
+            ffi::Result::Success => {
+                let mut surface_formats = Vec::with_capacity(capacity as usize);
+
+                let result = unsafe {
+                    vk_get_physical_device_surface_formats_khr(
+                        self.handle.as_ptr(),
+                        #[cfg(target_pointer_width = "64")]
+                        surface.handle.as_ptr(),
+                        #[cfg(not(target_pointer_width = "64"))]
+                        surface.handle.get(),
+                        &mut capacity,
+                        surface_formats.as_mut_ptr(),
+                    )
+                };
+
+                match result {
+                    ffi::Result::Success => {
+                        unsafe { surface_formats.set_len(capacity as usize) };
+                        Ok(surface_formats
+                            .into_iter()
+                            .map(|sf| SurfaceFormatKhr {
+                                format: sf.format.into(),
+                                color_space: sf.color_space.into(),
+                            })
+                            .collect())
+                    }
+                    ffi::Result::Incomplete => todo!(),
+                    ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
+                    ffi::Result::ErrorOutOfDeviceMemory => Err(Error::OutOfDeviceMemory),
+                    ffi::Result::ErrorSurfaceLostKhr => Err(Error::SurfaceLostKhr),
+                    _ => unreachable!(),
+                }
+            }
+            ffi::Result::Incomplete => todo!(),
+            ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
+            ffi::Result::ErrorOutOfDeviceMemory => Err(Error::OutOfDeviceMemory),
+            ffi::Result::ErrorSurfaceLostKhr => Err(Error::SurfaceLostKhr),
+            _ => unreachable!(),
+        })
+    }
+
     pub fn get_surface_capabilities_khr(
         &self,
         surface: &SurfaceKhr,
@@ -1358,6 +1431,11 @@ impl DispatchLoaderPhysicalDevice {
                         .cast(),
                 )
                 .map(|pfn| std::mem::transmute(pfn)),
+                vk_get_physical_device_surface_formats_khr: vk_get_instance_proc_addr(
+                    instance.handle.as_ptr(),
+                    "vkGetPhysicalDeviceSurfaceFormatsKHR\0".as_ptr().cast(),
+                )
+                .map(|pfn| std::mem::transmute(pfn)),
             }
         }
     }
@@ -1467,6 +1545,315 @@ impl From<ffi::Extent2D> for Extent2D {
         Self {
             width: extent.width,
             height: extent.height,
+        }
+    }
+}
+
+impl From<ffi::Format> for Format {
+    fn from(format: ffi::Format) -> Self {
+        match format {
+            ffi::Format::Undefined => Self::Undefined,
+            ffi::Format::R4g4UnormPack8 => Self::R4g4UnormPack8,
+            ffi::Format::R4g4b4a4UnormPack16 => Self::R4g4b4a4UnormPack16,
+            ffi::Format::B4g4r4a4UnormPack16 => Self::B4g4r4a4UnormPack16,
+            ffi::Format::R5g6b5UnormPack16 => Self::R5g6b5UnormPack16,
+            ffi::Format::B5g6r5UnormPack16 => Self::B5g6r5UnormPack16,
+            ffi::Format::R5g5b5a1UnormPack16 => Self::R5g5b5a1UnormPack16,
+            ffi::Format::B5g5r5a1UnormPack16 => Self::B5g5r5a1UnormPack16,
+            ffi::Format::A1r5g5b5UnormPack16 => Self::A1r5g5b5UnormPack16,
+            ffi::Format::R8Unorm => Self::R8Unorm,
+            ffi::Format::R8Snorm => Self::R8Snorm,
+            ffi::Format::R8Uscaled => Self::R8Uscaled,
+            ffi::Format::R8Sscaled => Self::R8Sscaled,
+            ffi::Format::R8Uint => Self::R8Uint,
+            ffi::Format::R8Sint => Self::R8Sint,
+            ffi::Format::R8Srgb => Self::R8Srgb,
+            ffi::Format::R8g8Unorm => Self::R8g8Unorm,
+            ffi::Format::R8g8Snorm => Self::R8g8Snorm,
+            ffi::Format::R8g8Uscaled => Self::R8g8Uscaled,
+            ffi::Format::R8g8Sscaled => Self::R8g8Sscaled,
+            ffi::Format::R8g8Uint => Self::R8g8Uint,
+            ffi::Format::R8g8Sint => Self::R8g8Sint,
+            ffi::Format::R8g8Srgb => Self::R8g8Srgb,
+            ffi::Format::R8g8b8Unorm => Self::R8g8b8Unorm,
+            ffi::Format::R8g8b8Snorm => Self::R8g8b8Snorm,
+            ffi::Format::R8g8b8Uscaled => Self::R8g8b8Uscaled,
+            ffi::Format::R8g8b8Sscaled => Self::R8g8b8Sscaled,
+            ffi::Format::R8g8b8Uint => Self::R8g8b8Uint,
+            ffi::Format::R8g8b8Sint => Self::R8g8b8Sint,
+            ffi::Format::R8g8b8Srgb => Self::R8g8b8Srgb,
+            ffi::Format::B8g8r8Unorm => Self::B8g8r8Unorm,
+            ffi::Format::B8g8r8Snorm => Self::B8g8r8Snorm,
+            ffi::Format::B8g8r8Uscaled => Self::B8g8r8Uscaled,
+            ffi::Format::B8g8r8Sscaled => Self::B8g8r8Sscaled,
+            ffi::Format::B8g8r8Uint => Self::B8g8r8Uint,
+            ffi::Format::B8g8r8Sint => Self::B8g8r8Sint,
+            ffi::Format::B8g8r8Srgb => Self::B8g8r8Srgb,
+            ffi::Format::R8g8b8a8Unorm => Self::R8g8b8a8Unorm,
+            ffi::Format::R8g8b8a8Snorm => Self::R8g8b8a8Snorm,
+            ffi::Format::R8g8b8a8Uscaled => Self::R8g8b8a8Uscaled,
+            ffi::Format::R8g8b8a8Sscaled => Self::R8g8b8a8Sscaled,
+            ffi::Format::R8g8b8a8Uint => Self::R8g8b8a8Uint,
+            ffi::Format::R8g8b8a8Sint => Self::R8g8b8a8Sint,
+            ffi::Format::R8g8b8a8Srgb => Self::R8g8b8a8Srgb,
+            ffi::Format::B8g8r8a8Unorm => Self::B8g8r8a8Unorm,
+            ffi::Format::B8g8r8a8Snorm => Self::B8g8r8a8Snorm,
+            ffi::Format::B8g8r8a8Uscaled => Self::B8g8r8a8Uscaled,
+            ffi::Format::B8g8r8a8Sscaled => Self::B8g8r8a8Sscaled,
+            ffi::Format::B8g8r8a8Uint => Self::B8g8r8a8Uint,
+            ffi::Format::B8g8r8a8Sint => Self::B8g8r8a8Sint,
+            ffi::Format::B8g8r8a8Srgb => Self::B8g8r8a8Srgb,
+            ffi::Format::A8b8g8r8UnormPack32 => Self::A8b8g8r8UnormPack32,
+            ffi::Format::A8b8g8r8SnormPack32 => Self::A8b8g8r8SnormPack32,
+            ffi::Format::A8b8g8r8UscaledPack32 => Self::A8b8g8r8UscaledPack32,
+            ffi::Format::A8b8g8r8SscaledPack32 => Self::A8b8g8r8SscaledPack32,
+            ffi::Format::A8b8g8r8UintPack32 => Self::A8b8g8r8UintPack32,
+            ffi::Format::A8b8g8r8SintPack32 => Self::A8b8g8r8SintPack32,
+            ffi::Format::A8b8g8r8SrgbPack32 => Self::A8b8g8r8SrgbPack32,
+            ffi::Format::A2r10g10b10UnormPack32 => Self::A2r10g10b10UnormPack32,
+            ffi::Format::A2r10g10b10SnormPack32 => Self::A2r10g10b10SnormPack32,
+            ffi::Format::A2r10g10b10UscaledPack32 => Self::A2r10g10b10UscaledPack32,
+            ffi::Format::A2r10g10b10SscaledPack32 => Self::A2r10g10b10SscaledPack32,
+            ffi::Format::A2r10g10b10UintPack32 => Self::A2r10g10b10UintPack32,
+            ffi::Format::A2r10g10b10SintPack32 => Self::A2r10g10b10SintPack32,
+            ffi::Format::A2b10g10r10UnormPack32 => Self::A2b10g10r10UnormPack32,
+            ffi::Format::A2b10g10r10SnormPack32 => Self::A2b10g10r10SnormPack32,
+            ffi::Format::A2b10g10r10UscaledPack32 => Self::A2b10g10r10UscaledPack32,
+            ffi::Format::A2b10g10r10SscaledPack32 => Self::A2b10g10r10SscaledPack32,
+            ffi::Format::A2b10g10r10UintPack32 => Self::A2b10g10r10UintPack32,
+            ffi::Format::A2b10g10r10SintPack32 => Self::A2b10g10r10SintPack32,
+            ffi::Format::R16Unorm => Self::R16Unorm,
+            ffi::Format::R16Snorm => Self::R16Snorm,
+            ffi::Format::R16Uscaled => Self::R16Uscaled,
+            ffi::Format::R16Sscaled => Self::R16Sscaled,
+            ffi::Format::R16Uint => Self::R16Uint,
+            ffi::Format::R16Sint => Self::R16Sint,
+            ffi::Format::R16Sfloat => Self::R16Sfloat,
+            ffi::Format::R16g16Unorm => Self::R16g16Unorm,
+            ffi::Format::R16g16Snorm => Self::R16g16Snorm,
+            ffi::Format::R16g16Uscaled => Self::R16g16Uscaled,
+            ffi::Format::R16g16Sscaled => Self::R16g16Sscaled,
+            ffi::Format::R16g16Uint => Self::R16g16Uint,
+            ffi::Format::R16g16Sint => Self::R16g16Sint,
+            ffi::Format::R16g16Sfloat => Self::R16g16Sfloat,
+            ffi::Format::R16g16b16Unorm => Self::R16g16b16Unorm,
+            ffi::Format::R16g16b16Snorm => Self::R16g16b16Snorm,
+            ffi::Format::R16g16b16Uscaled => Self::R16g16b16Uscaled,
+            ffi::Format::R16g16b16Sscaled => Self::R16g16b16Sscaled,
+            ffi::Format::R16g16b16Uint => Self::R16g16b16Uint,
+            ffi::Format::R16g16b16Sint => Self::R16g16b16Sint,
+            ffi::Format::R16g16b16Sfloat => Self::R16g16b16Sfloat,
+            ffi::Format::R16g16b16a16Unorm => Self::R16g16b16a16Unorm,
+            ffi::Format::R16g16b16a16Snorm => Self::R16g16b16a16Snorm,
+            ffi::Format::R16g16b16a16Uscaled => Self::R16g16b16a16Uscaled,
+            ffi::Format::R16g16b16a16Sscaled => Self::R16g16b16a16Sscaled,
+            ffi::Format::R16g16b16a16Uint => Self::R16g16b16a16Uint,
+            ffi::Format::R16g16b16a16Sint => Self::R16g16b16a16Sint,
+            ffi::Format::R16g16b16a16Sfloat => Self::R16g16b16a16Sfloat,
+            ffi::Format::R32Uint => Self::R32Uint,
+            ffi::Format::R32Sint => Self::R32Sint,
+            ffi::Format::R32Sfloat => Self::R32Sfloat,
+            ffi::Format::R32g32Uint => Self::R32g32Uint,
+            ffi::Format::R32g32Sint => Self::R32g32Sint,
+            ffi::Format::R32g32Sfloat => Self::R32g32Sfloat,
+            ffi::Format::R32g32b32Uint => Self::R32g32b32Uint,
+            ffi::Format::R32g32b32Sint => Self::R32g32b32Sint,
+            ffi::Format::R32g32b32Sfloat => Self::R32g32b32Sfloat,
+            ffi::Format::R32g32b32a32Uint => Self::R32g32b32a32Uint,
+            ffi::Format::R32g32b32a32Sint => Self::R32g32b32a32Sint,
+            ffi::Format::R32g32b32a32Sfloat => Self::R32g32b32a32Sfloat,
+            ffi::Format::R64Uint => Self::R64Uint,
+            ffi::Format::R64Sint => Self::R64Sint,
+            ffi::Format::R64Sfloat => Self::R64Sfloat,
+            ffi::Format::R64g64Uint => Self::R64g64Uint,
+            ffi::Format::R64g64Sint => Self::R64g64Sint,
+            ffi::Format::R64g64Sfloat => Self::R64g64Sfloat,
+            ffi::Format::R64g64b64Uint => Self::R64g64b64Uint,
+            ffi::Format::R64g64b64Sint => Self::R64g64b64Sint,
+            ffi::Format::R64g64b64Sfloat => Self::R64g64b64Sfloat,
+            ffi::Format::R64g64b64a64Uint => Self::R64g64b64a64Uint,
+            ffi::Format::R64g64b64a64Sint => Self::R64g64b64a64Sint,
+            ffi::Format::R64g64b64a64Sfloat => Self::R64g64b64a64Sfloat,
+            ffi::Format::B10g11r11UfloatPack32 => Self::B10g11r11UfloatPack32,
+            ffi::Format::E5b9g9r9UfloatPack32 => Self::E5b9g9r9UfloatPack32,
+            ffi::Format::D16Unorm => Self::D16Unorm,
+            ffi::Format::X8D24UnormPack32 => Self::X8D24UnormPack32,
+            ffi::Format::D32Sfloat => Self::D32Sfloat,
+            ffi::Format::S8Uint => Self::S8Uint,
+            ffi::Format::D16UnormS8Uint => Self::D16UnormS8Uint,
+            ffi::Format::D24UnormS8Uint => Self::D24UnormS8Uint,
+            ffi::Format::D32SfloatS8Uint => Self::D32SfloatS8Uint,
+            ffi::Format::Bc1RgbUnormBlock => Self::Bc1RgbUnormBlock,
+            ffi::Format::Bc1RgbSrgbBlock => Self::Bc1RgbSrgbBlock,
+            ffi::Format::Bc1RgbaUnormBlock => Self::Bc1RgbaUnormBlock,
+            ffi::Format::Bc1RgbaSrgbBlock => Self::Bc1RgbaSrgbBlock,
+            ffi::Format::Bc2UnormBlock => Self::Bc2UnormBlock,
+            ffi::Format::Bc2SrgbBlock => Self::Bc2SrgbBlock,
+            ffi::Format::Bc3UnormBlock => Self::Bc3UnormBlock,
+            ffi::Format::Bc3SrgbBlock => Self::Bc3SrgbBlock,
+            ffi::Format::Bc4UnormBlock => Self::Bc4UnormBlock,
+            ffi::Format::Bc4SnormBlock => Self::Bc4SnormBlock,
+            ffi::Format::Bc5UnormBlock => Self::Bc5UnormBlock,
+            ffi::Format::Bc5SnormBlock => Self::Bc5SnormBlock,
+            ffi::Format::Bc6hUfloatBlock => Self::Bc6hUfloatBlock,
+            ffi::Format::Bc6hSfloatBlock => Self::Bc6hSfloatBlock,
+            ffi::Format::Bc7UnormBlock => Self::Bc7UnormBlock,
+            ffi::Format::Bc7SrgbBlock => Self::Bc7SrgbBlock,
+            ffi::Format::Etc2R8g8b8UnormBlock => Self::Etc2R8g8b8UnormBlock,
+            ffi::Format::Etc2R8g8b8SrgbBlock => Self::Etc2R8g8b8SrgbBlock,
+            ffi::Format::Etc2R8g8b8a1UnormBlock => Self::Etc2R8g8b8a1UnormBlock,
+            ffi::Format::Etc2R8g8b8a1SrgbBlock => Self::Etc2R8g8b8a1SrgbBlock,
+            ffi::Format::Etc2R8g8b8a8UnormBlock => Self::Etc2R8g8b8a8UnormBlock,
+            ffi::Format::Etc2R8g8b8a8SrgbBlock => Self::Etc2R8g8b8a8SrgbBlock,
+            ffi::Format::EacR11UnormBlock => Self::EacR11UnormBlock,
+            ffi::Format::EacR11SnormBlock => Self::EacR11SnormBlock,
+            ffi::Format::EacR11g11UnormBlock => Self::EacR11g11UnormBlock,
+            ffi::Format::EacR11g11SnormBlock => Self::EacR11g11SnormBlock,
+            ffi::Format::Astc4x4UnormBlock => Self::Astc4x4UnormBlock,
+            ffi::Format::Astc4x4SrgbBlock => Self::Astc4x4SrgbBlock,
+            ffi::Format::Astc5x4UnormBlock => Self::Astc5x4UnormBlock,
+            ffi::Format::Astc5x4SrgbBlock => Self::Astc5x4SrgbBlock,
+            ffi::Format::Astc5x5UnormBlock => Self::Astc5x5UnormBlock,
+            ffi::Format::Astc5x5SrgbBlock => Self::Astc5x5SrgbBlock,
+            ffi::Format::Astc6x5UnormBlock => Self::Astc6x5UnormBlock,
+            ffi::Format::Astc6x5SrgbBlock => Self::Astc6x5SrgbBlock,
+            ffi::Format::Astc6x6UnormBlock => Self::Astc6x6UnormBlock,
+            ffi::Format::Astc6x6SrgbBlock => Self::Astc6x6SrgbBlock,
+            ffi::Format::Astc8x5UnormBlock => Self::Astc8x5UnormBlock,
+            ffi::Format::Astc8x5SrgbBlock => Self::Astc8x5SrgbBlock,
+            ffi::Format::Astc8x6UnormBlock => Self::Astc8x6UnormBlock,
+            ffi::Format::Astc8x6SrgbBlock => Self::Astc8x6SrgbBlock,
+            ffi::Format::Astc8x8UnormBlock => Self::Astc8x8UnormBlock,
+            ffi::Format::Astc8x8SrgbBlock => Self::Astc8x8SrgbBlock,
+            ffi::Format::Astc10x5UnormBlock => Self::Astc10x5UnormBlock,
+            ffi::Format::Astc10x5SrgbBlock => Self::Astc10x5SrgbBlock,
+            ffi::Format::Astc10x6UnormBlock => Self::Astc10x6UnormBlock,
+            ffi::Format::Astc10x6SrgbBlock => Self::Astc10x6SrgbBlock,
+            ffi::Format::Astc10x8UnormBlock => Self::Astc10x8UnormBlock,
+            ffi::Format::Astc10x8SrgbBlock => Self::Astc10x8SrgbBlock,
+            ffi::Format::Astc10x10UnormBlock => Self::Astc10x10UnormBlock,
+            ffi::Format::Astc10x10SrgbBlock => Self::Astc10x10SrgbBlock,
+            ffi::Format::Astc12x10UnormBlock => Self::Astc12x10UnormBlock,
+            ffi::Format::Astc12x10SrgbBlock => Self::Astc12x10SrgbBlock,
+            ffi::Format::Astc12x12UnormBlock => Self::Astc12x12UnormBlock,
+            ffi::Format::Astc12x12SrgbBlock => Self::Astc12x12SrgbBlock,
+            ffi::Format::G8b8g8r8_422Unorm => Self::G8b8g8r8_422Unorm,
+            ffi::Format::B8g8r8g8_422Unorm => Self::B8g8r8g8_422Unorm,
+            ffi::Format::G8B8R8_3plane420Unorm => Self::G8B8R8_3plane420Unorm,
+            ffi::Format::G8B8r8_2plane420Unorm => Self::G8B8r8_2plane420Unorm,
+            ffi::Format::G8B8R8_3plane422Unorm => Self::G8B8R8_3plane422Unorm,
+            ffi::Format::G8B8r8_2plane422Unorm => Self::G8B8r8_2plane422Unorm,
+            ffi::Format::G8B8R8_3plane444Unorm => Self::G8B8R8_3plane444Unorm,
+            ffi::Format::R10x6UnormPack16 => Self::R10x6UnormPack16,
+            ffi::Format::R10x6g10x6Unorm2pack16 => Self::R10x6g10x6Unorm2pack16,
+            ffi::Format::R10x6g10x6b10x6a10x6Unorm4pack16 => Self::R10x6g10x6b10x6a10x6Unorm4pack16,
+            ffi::Format::G10x6b10x6g10x6r10x6_422Unorm4pack16 => {
+                Self::G10x6b10x6g10x6r10x6_422Unorm4pack16
+            }
+            ffi::Format::B10x6g10x6r10x6g10x6_422Unorm4pack16 => {
+                Self::B10x6g10x6r10x6g10x6_422Unorm4pack16
+            }
+            ffi::Format::G10x6B10x6R10x6_3plane420Unorm3pack16 => {
+                Self::G10x6B10x6R10x6_3plane420Unorm3pack16
+            }
+            ffi::Format::G10x6B10x6r10x6_2plane420Unorm3pack16 => {
+                Self::G10x6B10x6r10x6_2plane420Unorm3pack16
+            }
+            ffi::Format::G10x6B10x6R10x6_3plane422Unorm3pack16 => {
+                Self::G10x6B10x6R10x6_3plane422Unorm3pack16
+            }
+            ffi::Format::G10x6B10x6r10x6_2plane422Unorm3pack16 => {
+                Self::G10x6B10x6r10x6_2plane422Unorm3pack16
+            }
+            ffi::Format::G10x6B10x6R10x6_3plane444Unorm3pack16 => {
+                Self::G10x6B10x6R10x6_3plane444Unorm3pack16
+            }
+            ffi::Format::R12x4UnormPack16 => Self::R12x4UnormPack16,
+            ffi::Format::R12x4g12x4Unorm2pack16 => Self::R12x4g12x4Unorm2pack16,
+            ffi::Format::R12x4g12x4b12x4a12x4Unorm4pack16 => Self::R12x4g12x4b12x4a12x4Unorm4pack16,
+            ffi::Format::G12x4b12x4g12x4r12x4_422Unorm4pack16 => {
+                Self::G12x4b12x4g12x4r12x4_422Unorm4pack16
+            }
+            ffi::Format::B12x4g12x4r12x4g12x4_422Unorm4pack16 => {
+                Self::B12x4g12x4r12x4g12x4_422Unorm4pack16
+            }
+            ffi::Format::G12x4B12x4R12x4_3plane420Unorm3pack16 => {
+                Self::G12x4B12x4R12x4_3plane420Unorm3pack16
+            }
+            ffi::Format::G12x4B12x4r12x4_2plane420Unorm3pack16 => {
+                Self::G12x4B12x4r12x4_2plane420Unorm3pack16
+            }
+            ffi::Format::G12x4B12x4R12x4_3plane422Unorm3pack16 => {
+                Self::G12x4B12x4R12x4_3plane422Unorm3pack16
+            }
+            ffi::Format::G12x4B12x4r12x4_2plane422Unorm3pack16 => {
+                Self::G12x4B12x4r12x4_2plane422Unorm3pack16
+            }
+            ffi::Format::G12x4B12x4R12x4_3plane444Unorm3pack16 => {
+                Self::G12x4B12x4R12x4_3plane444Unorm3pack16
+            }
+            ffi::Format::G16b16g16r16_422Unorm => Self::G16b16g16r16_422Unorm,
+            ffi::Format::B16g16r16g16_422Unorm => Self::B16g16r16g16_422Unorm,
+            ffi::Format::G16B16R16_3plane420Unorm => Self::G16B16R16_3plane420Unorm,
+            ffi::Format::G16B16r16_2plane420Unorm => Self::G16B16r16_2plane420Unorm,
+            ffi::Format::G16B16R16_3plane422Unorm => Self::G16B16R16_3plane422Unorm,
+            ffi::Format::G16B16r16_2plane422Unorm => Self::G16B16r16_2plane422Unorm,
+            ffi::Format::G16B16R16_3plane444Unorm => Self::G16B16R16_3plane444Unorm,
+            ffi::Format::Pvrtc1_2bppUnormBlockImg => Self::Pvrtc1_2bppUnormBlockImg,
+            ffi::Format::Pvrtc1_4bppUnormBlockImg => Self::Pvrtc1_4bppUnormBlockImg,
+            ffi::Format::Pvrtc2_2bppUnormBlockImg => Self::Pvrtc2_2bppUnormBlockImg,
+            ffi::Format::Pvrtc2_4bppUnormBlockImg => Self::Pvrtc2_4bppUnormBlockImg,
+            ffi::Format::Pvrtc1_2bppSrgbBlockImg => Self::Pvrtc1_2bppSrgbBlockImg,
+            ffi::Format::Pvrtc1_4bppSrgbBlockImg => Self::Pvrtc1_4bppSrgbBlockImg,
+            ffi::Format::Pvrtc2_2bppSrgbBlockImg => Self::Pvrtc2_2bppSrgbBlockImg,
+            ffi::Format::Pvrtc2_4bppSrgbBlockImg => Self::Pvrtc2_4bppSrgbBlockImg,
+            ffi::Format::Astc4x4SfloatBlockExt => Self::Astc4x4SfloatBlockExt,
+            ffi::Format::Astc5x4SfloatBlockExt => Self::Astc5x4SfloatBlockExt,
+            ffi::Format::Astc5x5SfloatBlockExt => Self::Astc5x5SfloatBlockExt,
+            ffi::Format::Astc6x5SfloatBlockExt => Self::Astc6x5SfloatBlockExt,
+            ffi::Format::Astc6x6SfloatBlockExt => Self::Astc6x6SfloatBlockExt,
+            ffi::Format::Astc8x5SfloatBlockExt => Self::Astc8x5SfloatBlockExt,
+            ffi::Format::Astc8x6SfloatBlockExt => Self::Astc8x6SfloatBlockExt,
+            ffi::Format::Astc8x8SfloatBlockExt => Self::Astc8x8SfloatBlockExt,
+            ffi::Format::Astc10x5SfloatBlockExt => Self::Astc10x5SfloatBlockExt,
+            ffi::Format::Astc10x6SfloatBlockExt => Self::Astc10x6SfloatBlockExt,
+            ffi::Format::Astc10x8SfloatBlockExt => Self::Astc10x8SfloatBlockExt,
+            ffi::Format::Astc10x10SfloatBlockExt => Self::Astc10x10SfloatBlockExt,
+            ffi::Format::Astc12x10SfloatBlockExt => Self::Astc12x10SfloatBlockExt,
+            ffi::Format::Astc12x12SfloatBlockExt => Self::Astc12x12SfloatBlockExt,
+            ffi::Format::G8B8r8_2plane444UnormExt => Self::G8B8r8_2plane444UnormExt,
+            ffi::Format::G10x6B10x6r10x6_2plane444Unorm3pack16Ext => {
+                Self::G10x6B10x6r10x6_2plane444Unorm3pack16Ext
+            }
+            ffi::Format::G12x4B12x4r12x4_2plane444Unorm3pack16Ext => {
+                Self::G12x4B12x4r12x4_2plane444Unorm3pack16Ext
+            }
+            ffi::Format::G16B16r16_2plane444UnormExt => Self::G16B16r16_2plane444UnormExt,
+            ffi::Format::A4r4g4b4UnormPack16Ext => Self::A4r4g4b4UnormPack16Ext,
+            ffi::Format::A4b4g4r4UnormPack16Ext => Self::A4b4g4r4UnormPack16Ext,
+        }
+    }
+}
+
+impl From<ffi::ColorSpaceKhr> for ColorSpaceKhr {
+    fn from(color_space: ffi::ColorSpaceKhr) -> Self {
+        match color_space {
+            ffi::ColorSpaceKhr::SrgbNonlinearKhr => Self::SrgbNonlinearKhr,
+            ffi::ColorSpaceKhr::DisplayP3NonlinearExt => Self::DisplayP3NonlinearExt,
+            ffi::ColorSpaceKhr::ExtendedSrgbLinearExt => Self::ExtendedSrgbLinearExt,
+            ffi::ColorSpaceKhr::DisplayP3LinearExt => Self::DisplayP3LinearExt,
+            ffi::ColorSpaceKhr::DciP3NonlinearExt => Self::DciP3NonlinearExt,
+            ffi::ColorSpaceKhr::Bt709LinearExt => Self::Bt709LinearExt,
+            ffi::ColorSpaceKhr::Bt709NonlinearExt => Self::Bt709NonlinearExt,
+            ffi::ColorSpaceKhr::Bt2020LinearExt => Self::Bt2020LinearExt,
+            ffi::ColorSpaceKhr::Hdr10St2084Ext => Self::Hdr10St2084Ext,
+            ffi::ColorSpaceKhr::DolbyvisionExt => Self::DolbyvisionExt,
+            ffi::ColorSpaceKhr::Hdr10HlgExt => Self::Hdr10HlgExt,
+            ffi::ColorSpaceKhr::AdobergbLinearExt => Self::AdobergbLinearExt,
+            ffi::ColorSpaceKhr::AdobergbNonlinearExt => Self::AdobergbNonlinearExt,
+            ffi::ColorSpaceKhr::PassThroughExt => Self::PassThroughExt,
+            ffi::ColorSpaceKhr::ExtendedSrgbNonlinearExt => Self::ExtendedSrgbNonlinearExt,
+            ffi::ColorSpaceKhr::DisplayNativeAmd => Self::DisplayNativeAmd,
         }
     }
 }
@@ -1594,7 +1981,7 @@ impl From<ImageUsage> for ffi::ImageUsageFlagBits {
             ImageUsage::InputAttachment => Self::InputAttachmentBit,
             ImageUsage::ShadingRateImageNv => Self::ShadingRateImageBitNv,
             ImageUsage::FragmentDensityMapExt => Self::FragmentDensityMapBitExt,
-        } 
+        }
     }
 }
 
