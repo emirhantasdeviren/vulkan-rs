@@ -979,6 +979,7 @@ impl<'a> PhysicalDevice<'a> {
         &self,
         queue_family_indices: &[usize],
         priorities: &[&[f32]],
+        extensions: Option<&[&str]>,
     ) -> Device<'a> {
         let queue_create_infos: Vec<ffi::DeviceQueueCreateInfo> = queue_family_indices
             .iter()
@@ -993,6 +994,20 @@ impl<'a> PhysicalDevice<'a> {
             })
             .collect();
 
+        let extensions_c: Option<Vec<CString>> = extensions.map(|e| {
+            e.iter()
+                .map(|name| CString::new(name.as_bytes()).unwrap())
+                .collect()
+        });
+        let extension_ptrs: Option<Vec<*const i8>> = extensions_c
+            .as_ref()
+            .map(|e| e.iter().map(|name| name.as_ptr()).collect());
+
+        let enabled_extension_count = extension_ptrs.as_ref().map_or(0, |ptrs| ptrs.len() as u32);
+        let pp_enabled_extension_names = extension_ptrs
+            .as_ref()
+            .map_or(std::ptr::null(), |ptrs| ptrs.as_ptr());
+
         let create_info = ffi::DeviceCreateInfo {
             s_type: ffi::StructureType::DeviceCreateInfo,
             p_next: std::ptr::null(),
@@ -1001,8 +1016,8 @@ impl<'a> PhysicalDevice<'a> {
             p_queue_create_infos: queue_create_infos.as_ptr(),
             enabled_layer_count: 0,
             pp_enabled_layer_names: std::ptr::null(),
-            enabled_extension_count: 0,
-            pp_enabled_extension_names: std::ptr::null(),
+            enabled_extension_count,
+            pp_enabled_extension_names,
             p_enabled_features: std::ptr::null(),
         };
 

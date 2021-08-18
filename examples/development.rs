@@ -35,7 +35,12 @@ fn main() {
         })
         .expect("Could not find suitable GPU.");
 
-    let device = physical_device.create_device(&[0], &[&[1.0f32]]);
+    let device = physical_device.create_device(
+        &[0],
+        &[&[1.0f32]],
+        Some(&[vk::KHR_SWAPCHAIN_EXTENSION_NAME]),
+    );
+
     let _queue = device.get_device_queue(0, 0);
 
     let mut event_loop = EventLoop::new();
@@ -47,8 +52,14 @@ fn main() {
         .unwrap();
 
     let surface = instance.create_surface_khr(&window);
-    let surface_capabilities = physical_device.get_surface_capabilities_khr(&surface).unwrap().unwrap();
-    let surface_formats = physical_device.get_surface_formats_khr(&surface).unwrap().unwrap();
+    let surface_capabilities = physical_device
+        .get_surface_capabilities_khr(&surface)
+        .unwrap()
+        .unwrap();
+    let surface_formats = physical_device
+        .get_surface_formats_khr(&surface)
+        .unwrap()
+        .unwrap();
 
     for surface_format in surface_formats.iter() {
         println!("{:?}", surface_format);
