@@ -141,6 +141,8 @@ struct DispatchLoaderPhysicalDevice {
         Option<ffi::PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>,
     vk_get_physical_device_surface_formats_khr:
         Option<ffi::PFN_vkGetPhysicalDeviceSurfaceFormatsKHR>,
+    vk_get_physical_device_surface_present_modes_khr:
+        Option<ffi::PFN_vkGetPhysicalDeviceSurfacePresentModesKHR>,
 }
 
 struct DispatchLoaderDevice {
@@ -533,6 +535,7 @@ pub struct SwapchainCreateFlagsKhr(u32);
 #[derive(Default)]
 pub struct SwapchainCreateFlagsBuilderKhr(u32);
 
+#[derive(Debug)]
 pub enum PresentModeKhr {
     ImmediateKhr,
     MailboxKhr,
@@ -1163,6 +1166,63 @@ impl<'a> PhysicalDevice<'a> {
             _ => unreachable!(),
         }
     }
+
+    pub fn get_surface_present_modes_khr(
+        &self,
+        surface: &SurfaceKhr,
+    ) -> Option<Result<Vec<PresentModeKhr>>> {
+        let mut capacity = 0;
+        let vk_get_physical_device_surface_present_modes_khr = self
+            .dispatch_loader
+            .vk_get_physical_device_surface_present_modes_khr?;
+        let result = unsafe {
+            vk_get_physical_device_surface_present_modes_khr(
+                self.handle.as_ptr(),
+                #[cfg(target_pointer_width = "64")]
+                surface.handle.as_ptr(),
+                #[cfg(not(target_pointer_width = "64"))]
+                surface.handle.get(),
+                &mut capacity,
+                std::ptr::null_mut(),
+            )
+        };
+
+        Some(match result {
+            ffi::Result::Success => {
+                let mut present_modes: Vec<ffi::PresentModeKhr> =
+                    Vec::with_capacity(capacity as usize);
+                let result = unsafe {
+                    vk_get_physical_device_surface_present_modes_khr(
+                        self.handle.as_ptr(),
+                        #[cfg(target_pointer_width = "64")]
+                        surface.handle.as_ptr(),
+                        #[cfg(not(target_pointer_width = "64"))]
+                        surface.handle.get(),
+                        &mut capacity,
+                        present_modes.as_mut_ptr(),
+                    )
+                };
+
+                match result {
+                    ffi::Result::Success => {
+                        unsafe { present_modes.set_len(capacity as usize) };
+
+                        Ok(present_modes.into_iter().map(|pm| pm.into()).collect())
+                    }
+                    ffi::Result::Incomplete => todo!(),
+                    ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
+                    ffi::Result::ErrorOutOfDeviceMemory => Err(Error::OutOfDeviceMemory),
+                    ffi::Result::ErrorSurfaceLostKhr => Err(Error::SurfaceLostKhr),
+                    _ => unreachable!(),
+                }
+            }
+            ffi::Result::Incomplete => todo!(),
+            ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
+            ffi::Result::ErrorOutOfDeviceMemory => Err(Error::OutOfDeviceMemory),
+            ffi::Result::ErrorSurfaceLostKhr => Err(Error::SurfaceLostKhr),
+            _ => unreachable!(),
+        })
+    }
 }
 
 impl<'a> Device<'a> {
@@ -1449,6 +1509,13 @@ impl DispatchLoaderPhysicalDevice {
                 vk_get_physical_device_surface_formats_khr: vk_get_instance_proc_addr(
                     instance.handle.as_ptr(),
                     "vkGetPhysicalDeviceSurfaceFormatsKHR\0".as_ptr().cast(),
+                )
+                .map(|pfn| std::mem::transmute(pfn)),
+                vk_get_physical_device_surface_present_modes_khr: vk_get_instance_proc_addr(
+                    instance.handle.as_ptr(),
+                    "vkGetPhysicalDeviceSurfacePresentModesKHR\0"
+                        .as_ptr()
+                        .cast(),
                 )
                 .map(|pfn| std::mem::transmute(pfn)),
             }
@@ -1996,6 +2063,19 @@ impl From<ImageUsage> for ffi::ImageUsageFlagBits {
             ImageUsage::InputAttachment => Self::InputAttachmentBit,
             ImageUsage::ShadingRateImageNv => Self::ShadingRateImageBitNv,
             ImageUsage::FragmentDensityMapExt => Self::FragmentDensityMapBitExt,
+        }
+    }
+}
+
+impl From<ffi::PresentModeKhr> for PresentModeKhr {
+    fn from(present_mode: ffi::PresentModeKhr) -> Self {
+        match present_mode {
+            ffi::PresentModeKhr::ImmediateKhr => Self::ImmediateKhr,
+            ffi::PresentModeKhr::MailboxKhr => Self::MailboxKhr,
+            ffi::PresentModeKhr::FifoKhr => Self::FifoKhr,
+            ffi::PresentModeKhr::FifoRelaxedKhr => Self::FifoRelaxedKhr,
+            ffi::PresentModeKhr::SharedDemandRefreshKhr => Self::SharedDemandRefreshKhr,
+            ffi::PresentModeKhr::SharedContinuousRefreshKhr => Self::SharedContinuousRefreshKhr,
         }
     }
 }

@@ -304,6 +304,13 @@ pub type PFN_vkGetPhysicalDeviceSurfaceFormatsKHR = unsafe extern "system" fn(
     p_surface_format_count: *mut u32,
     p_surface_formats: *mut SurfaceFormatKhr,
 ) -> self::Result;
+pub type PFN_vkGetPhysicalDeviceSurfacePresentModesKHR = unsafe extern "system" fn(
+    physical_device: *mut OpaquePhysicalDevice,
+    #[cfg(target_pointer_width = "64")] surface: *mut OpaqueSurfaceKhr,
+    #[cfg(not(target_pointer_width = "64"))] surface: u64,
+    p_present_mode_count: *mut u32,
+    p_present_modes: *mut PresentModeKhr,
+) -> self::Result;
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;
