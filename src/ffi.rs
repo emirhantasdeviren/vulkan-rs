@@ -119,6 +119,7 @@ pub enum StructureType {
     SemaphoreCreateInfo = 9,
     CommandPoolCreateInfo = 39,
     CommandBufferAllocateInfo = 40,
+    SwapchainCreateInfoKhr = 1000001000,
     XlibSurfaceCreateInfoKhr = 1000004000,
     XcbSurfaceCreateInfoKhr = 1000005000,
     Win32SurfaceCreateInfoKhr = 1000009000,
@@ -311,6 +312,19 @@ pub type PFN_vkGetPhysicalDeviceSurfacePresentModesKHR = unsafe extern "system" 
     p_present_mode_count: *mut u32,
     p_present_modes: *mut PresentModeKhr,
 ) -> self::Result;
+pub type PFN_vkCreateSwapchainKHR = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    p_create_info: *const SwapchainCreateInfoKhr,
+    p_allocator: *const AllocationCallbacks,
+    #[cfg(target_pointer_width = "64")] p_swapchain: *mut *mut OpaqueSwapchainKhr,
+    #[cfg(not(target_pointer_width = "64"))] p_swapchain: *mut u64,
+) -> self::Result;
+pub type PFN_vkDestroySwapchainKHR = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    #[cfg(target_pointer_width = "64")] swapchain: *mut OpaqueSwapchainKhr,
+    #[cfg(not(target_pointer_width = "64"))] swapchain: u64,
+    p_allocator: *const AllocationCallbacks,
+);
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;
@@ -1114,28 +1128,28 @@ pub type SwapchainCreateFlagsKhr = Flags;
 
 #[repr(C)]
 pub struct SwapchainCreateInfoKhr {
-    s_type: StructureType,
-    p_next: *const c_void,
-    flags: SwapchainCreateFlagsKhr,
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub flags: SwapchainCreateFlagsKhr,
     #[cfg(target_pointer_width = "64")]
-    surface: *mut OpaqueSurfaceKhr,
+    pub surface: *mut OpaqueSurfaceKhr,
     #[cfg(not(target_pointer_width = "64"))]
-    surface: u64,
-    min_image_count: u32,
-    image_format: Format,
-    image_color_space: ColorSpaceKhr,
-    image_extent: Extent2D,
-    image_array_layers: u32,
-    image_usage: ImageUsageFlags,
-    image_sharing_mode: SharingMode,
-    queue_family_index_count: u32,
-    queue_family_indices: *const u32,
-    pre_transform: SurfaceTransformFlagBitsKhr,
-    composite_alpha: CompositeAlphaFlagBitsKhr,
-    present_mode: PresentModeKhr,
-    clipped: Bool32,
+    pub surface: u64,
+    pub min_image_count: u32,
+    pub image_format: Format,
+    pub image_color_space: ColorSpaceKhr,
+    pub image_extent: Extent2D,
+    pub image_array_layers: u32,
+    pub image_usage: ImageUsageFlags,
+    pub image_sharing_mode: SharingMode,
+    pub queue_family_index_count: u32,
+    pub queue_family_indices: *const u32,
+    pub pre_transform: SurfaceTransformFlagBitsKhr,
+    pub composite_alpha: CompositeAlphaFlagBitsKhr,
+    pub present_mode: PresentModeKhr,
+    pub clipped: Bool32,
     #[cfg(target_pointer_width = "64")]
-    old_swapchain: *mut OpaqueSwapchainKhr,
+    pub old_swapchain: *mut OpaqueSwapchainKhr,
     #[cfg(not(target_pointer_width = "64"))]
-    old_swapchain: u64,
+    pub old_swapchain: u64,
 }

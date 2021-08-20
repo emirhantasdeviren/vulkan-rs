@@ -56,23 +56,28 @@ fn main() {
         .get_surface_capabilities_khr(&surface)
         .unwrap()
         .unwrap();
-    let surface_formats = physical_device
+
+    let surface_format = physical_device
         .get_surface_formats_khr(&surface)
         .unwrap()
+        .unwrap()
+        .into_iter()
+        .find(|available_format| {
+            available_format.format == vk::Format::B8g8r8a8Srgb
+                && available_format.color_space == vk::ColorSpaceKhr::SrgbNonlinearKhr
+        })
         .unwrap();
-    let present_modes = physical_device
+
+    let present_mode = physical_device
         .get_surface_present_modes_khr(&surface)
         .unwrap()
-        .unwrap();
+        .unwrap()
+        .into_iter()
+        .find(|available_present_mode| *available_present_mode == vk::PresentModeKhr::MailboxKhr)
+        .unwrap_or(vk::PresentModeKhr::FifoKhr);
 
-    for surface_format in surface_formats.iter() {
-        println!("{:?}", surface_format);
-    }
-
-    for present_mode in present_modes.iter() {
-        println!("{:?}", present_mode);
-    }
-    println!();
+    dbg!(surface_format);
+    dbg!(present_mode);
 
     event_loop.run_return(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;

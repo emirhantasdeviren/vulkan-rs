@@ -153,9 +153,11 @@ struct DispatchLoaderDevice {
     vk_allocate_command_buffers: ffi::PFN_vkAllocateCommandBuffers,
     vk_create_semaphore: ffi::PFN_vkCreateSemaphore,
     vk_destroy_semaphore: ffi::PFN_vkDestroySemaphore,
+    vk_create_swapchain_khr: Option<ffi::PFN_vkCreateSwapchainKHR>,
+    vk_destroy_swapchain_khr: Option<ffi::PFN_vkDestroySwapchainKHR>,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PhysicalDeviceType {
     Other,
     IntegratedGpu,
@@ -184,7 +186,7 @@ pub struct QueueFamilyProperties {
     pub queue_count: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Format {
     Undefined,
     R4g4UnormPack8,
@@ -435,7 +437,7 @@ pub enum Format {
     A4b4g4r4UnormPack16Ext,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColorSpaceKhr {
     SrgbNonlinearKhr,
     DisplayP3NonlinearExt,
@@ -460,7 +462,7 @@ pub enum SharingMode<'a> {
     Concurrent(&'a [usize]),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SurfaceTransformKhr {
     IdentityKhr,
     Rotate90Khr,
@@ -497,10 +499,10 @@ pub struct SurfaceCapabilitiesKhr {
     pub supported_usage_flags: ImageUsageFlags,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct SurfaceFormatKhr {
-    format: Format,
-    color_space: ColorSpaceKhr,
+    pub format: Format,
+    pub color_space: ColorSpaceKhr,
 }
 
 pub struct Extent2D {
@@ -535,7 +537,7 @@ pub struct SwapchainCreateFlagsKhr(u32);
 #[derive(Default)]
 pub struct SwapchainCreateFlagsBuilderKhr(u32);
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PresentModeKhr {
     ImmediateKhr,
     MailboxKhr,
@@ -1308,6 +1310,71 @@ impl<'a> Device<'a> {
             panic!("Could not create Semaphore: {:?}", result)
         }
     }
+
+    pub fn create_swapchain_khr(
+        &self,
+        create_info: SwapchainCreateInfoKhr,
+    ) -> Result<SwapchainKhr<'_>> {
+        let ffi_create_info = ffi::SwapchainCreateInfoKhr {
+            s_type: ffi::StructureType::SwapchainCreateInfoKhr,
+            p_next: std::ptr::null(),
+            flags: create_info.flags.0,
+            #[cfg(target_pointer_width = "64")]
+            surface: create_info.surface.handle.as_ptr(),
+            #[cfg(not(target_pointer_width = "64"))]
+            surface: create_info.surface.handle.get(),
+            min_image_count: create_info.min_image_count,
+            image_format: create_info.image_format.into(),
+            image_color_space: create_info.image_color_space.into(),
+            image_extent: create_info.image_extent.into(),
+            image_array_layers: create_info.image_array_layers,
+            image_usage: create_info.image_usage.0,
+            image_sharing_mode: (&create_info.image_sharing_mode).into(),
+            queue_family_index_count: match create_info.image_sharing_mode {
+                SharingMode::Exclusive => 0,
+                SharingMode::Concurrent(s) => s.len() as u32,
+            },
+            queue_family_indices: match create_info.image_sharing_mode {
+                SharingMode::Exclusive => std::ptr::null(),
+                SharingMode::Concurrent(s) => s.as_ptr().cast(),
+            },
+            pre_transform: create_info.pre_transform.into(),
+            composite_alpha: create_info.composite_alpha.into(),
+            present_mode: create_info.present_mode.into(),
+            clipped: create_info.clipped.into(),
+            old_swapchain: std::ptr::null_mut(),
+        };
+
+        let mut handle = MaybeUninit::uninit();
+
+        let result = unsafe {
+            (self.dispatch_loader.vk_create_swapchain_khr.unwrap())(
+                self.handle.as_ptr(),
+                &ffi_create_info,
+                std::ptr::null(),
+                handle.as_mut_ptr(),
+            )
+        };
+
+        match result {
+            ffi::Result::Success => Ok(SwapchainKhr {
+                #[cfg(target_pointer_width = "64")]
+                handle: unsafe { NonNull::new_unchecked(handle.assume_init()) },
+                #[cfg(not(target_pointer_width = "64"))]
+                handle: unsafe { NonZeroU64::new_unchecked(handle.assume_init()) },
+                device: self,
+                #[cfg(target_pointer_width = "64")]
+                _marker: PhantomData,
+            }),
+            ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
+            ffi::Result::ErrorOutOfDeviceMemory => Err(Error::OutOfDeviceMemory),
+            ffi::Result::ErrorDeviceLost => Err(Error::DeviceLost),
+            ffi::Result::ErrorSurfaceLostKhr => Err(Error::SurfaceLostKhr),
+            ffi::Result::ErrorNativeWindowInUseKhr => Err(Error::NativeWindowInUseKhr),
+            ffi::Result::ErrorInitializationFailed => Err(Error::InitializationFailed),
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl<'a> Drop for Device<'a> {
@@ -1381,6 +1448,26 @@ impl<'a> Drop for SurfaceKhr<'a> {
                 .vk_destroy_surface_khr
                 .unwrap())(
                 self.instance.handle.as_ptr(),
+                #[cfg(target_pointer_width = "64")]
+                self.handle.as_ptr(),
+                #[cfg(not(target_pointer_width = "64"))]
+                self.handle.get(),
+                std::ptr::null(),
+            );
+        }
+    }
+}
+
+impl<'a> Drop for SwapchainKhr<'a> {
+    fn drop(&mut self) {
+        println!("Dropped SwapchainKHR");
+        unsafe {
+            (self
+                .device
+                .dispatch_loader
+                .vk_destroy_swapchain_khr
+                .unwrap())(
+                self.device.handle.as_ptr(),
                 #[cfg(target_pointer_width = "64")]
                 self.handle.as_ptr(),
                 #[cfg(not(target_pointer_width = "64"))]
@@ -1572,6 +1659,16 @@ impl DispatchLoaderDevice {
             )
             .map(|pfn| std::mem::transmute(pfn))
             .unwrap(),
+            vk_create_swapchain_khr: vk_get_device_proc_addr(
+                device_handle,
+                "vkCreateSwapchainKHR\0".as_ptr().cast(),
+            )
+            .map(|pfn| std::mem::transmute(pfn)),
+            vk_destroy_swapchain_khr: vk_get_device_proc_addr(
+                device_handle,
+                "vkDestroySwapchainKHR\0".as_ptr().cast(),
+            )
+            .map(|pfn| std::mem::transmute(pfn)),
         }
     }
 }
@@ -1624,6 +1721,15 @@ impl std::fmt::Display for ApiVersion {
 
 impl From<ffi::Extent2D> for Extent2D {
     fn from(extent: ffi::Extent2D) -> Self {
+        Self {
+            width: extent.width,
+            height: extent.height,
+        }
+    }
+}
+
+impl From<Extent2D> for ffi::Extent2D {
+    fn from(extent: Extent2D) -> Self {
         Self {
             width: extent.width,
             height: extent.height,
@@ -1917,6 +2023,292 @@ impl From<ffi::Format> for Format {
     }
 }
 
+impl From<Format> for ffi::Format {
+    fn from(format: Format) -> Self {
+        match format {
+            Format::Undefined => Self::Undefined,
+            Format::R4g4UnormPack8 => Self::R4g4UnormPack8,
+            Format::R4g4b4a4UnormPack16 => Self::R4g4b4a4UnormPack16,
+            Format::B4g4r4a4UnormPack16 => Self::B4g4r4a4UnormPack16,
+            Format::R5g6b5UnormPack16 => Self::R5g6b5UnormPack16,
+            Format::B5g6r5UnormPack16 => Self::B5g6r5UnormPack16,
+            Format::R5g5b5a1UnormPack16 => Self::R5g5b5a1UnormPack16,
+            Format::B5g5r5a1UnormPack16 => Self::B5g5r5a1UnormPack16,
+            Format::A1r5g5b5UnormPack16 => Self::A1r5g5b5UnormPack16,
+            Format::R8Unorm => Self::R8Unorm,
+            Format::R8Snorm => Self::R8Snorm,
+            Format::R8Uscaled => Self::R8Uscaled,
+            Format::R8Sscaled => Self::R8Sscaled,
+            Format::R8Uint => Self::R8Uint,
+            Format::R8Sint => Self::R8Sint,
+            Format::R8Srgb => Self::R8Srgb,
+            Format::R8g8Unorm => Self::R8g8Unorm,
+            Format::R8g8Snorm => Self::R8g8Snorm,
+            Format::R8g8Uscaled => Self::R8g8Uscaled,
+            Format::R8g8Sscaled => Self::R8g8Sscaled,
+            Format::R8g8Uint => Self::R8g8Uint,
+            Format::R8g8Sint => Self::R8g8Sint,
+            Format::R8g8Srgb => Self::R8g8Srgb,
+            Format::R8g8b8Unorm => Self::R8g8b8Unorm,
+            Format::R8g8b8Snorm => Self::R8g8b8Snorm,
+            Format::R8g8b8Uscaled => Self::R8g8b8Uscaled,
+            Format::R8g8b8Sscaled => Self::R8g8b8Sscaled,
+            Format::R8g8b8Uint => Self::R8g8b8Uint,
+            Format::R8g8b8Sint => Self::R8g8b8Sint,
+            Format::R8g8b8Srgb => Self::R8g8b8Srgb,
+            Format::B8g8r8Unorm => Self::B8g8r8Unorm,
+            Format::B8g8r8Snorm => Self::B8g8r8Snorm,
+            Format::B8g8r8Uscaled => Self::B8g8r8Uscaled,
+            Format::B8g8r8Sscaled => Self::B8g8r8Sscaled,
+            Format::B8g8r8Uint => Self::B8g8r8Uint,
+            Format::B8g8r8Sint => Self::B8g8r8Sint,
+            Format::B8g8r8Srgb => Self::B8g8r8Srgb,
+            Format::R8g8b8a8Unorm => Self::R8g8b8a8Unorm,
+            Format::R8g8b8a8Snorm => Self::R8g8b8a8Snorm,
+            Format::R8g8b8a8Uscaled => Self::R8g8b8a8Uscaled,
+            Format::R8g8b8a8Sscaled => Self::R8g8b8a8Sscaled,
+            Format::R8g8b8a8Uint => Self::R8g8b8a8Uint,
+            Format::R8g8b8a8Sint => Self::R8g8b8a8Sint,
+            Format::R8g8b8a8Srgb => Self::R8g8b8a8Srgb,
+            Format::B8g8r8a8Unorm => Self::B8g8r8a8Unorm,
+            Format::B8g8r8a8Snorm => Self::B8g8r8a8Snorm,
+            Format::B8g8r8a8Uscaled => Self::B8g8r8a8Uscaled,
+            Format::B8g8r8a8Sscaled => Self::B8g8r8a8Sscaled,
+            Format::B8g8r8a8Uint => Self::B8g8r8a8Uint,
+            Format::B8g8r8a8Sint => Self::B8g8r8a8Sint,
+            Format::B8g8r8a8Srgb => Self::B8g8r8a8Srgb,
+            Format::A8b8g8r8UnormPack32 => Self::A8b8g8r8UnormPack32,
+            Format::A8b8g8r8SnormPack32 => Self::A8b8g8r8SnormPack32,
+            Format::A8b8g8r8UscaledPack32 => Self::A8b8g8r8UscaledPack32,
+            Format::A8b8g8r8SscaledPack32 => Self::A8b8g8r8SscaledPack32,
+            Format::A8b8g8r8UintPack32 => Self::A8b8g8r8UintPack32,
+            Format::A8b8g8r8SintPack32 => Self::A8b8g8r8SintPack32,
+            Format::A8b8g8r8SrgbPack32 => Self::A8b8g8r8SrgbPack32,
+            Format::A2r10g10b10UnormPack32 => Self::A2r10g10b10UnormPack32,
+            Format::A2r10g10b10SnormPack32 => Self::A2r10g10b10SnormPack32,
+            Format::A2r10g10b10UscaledPack32 => Self::A2r10g10b10UscaledPack32,
+            Format::A2r10g10b10SscaledPack32 => Self::A2r10g10b10SscaledPack32,
+            Format::A2r10g10b10UintPack32 => Self::A2r10g10b10UintPack32,
+            Format::A2r10g10b10SintPack32 => Self::A2r10g10b10SintPack32,
+            Format::A2b10g10r10UnormPack32 => Self::A2b10g10r10UnormPack32,
+            Format::A2b10g10r10SnormPack32 => Self::A2b10g10r10SnormPack32,
+            Format::A2b10g10r10UscaledPack32 => Self::A2b10g10r10UscaledPack32,
+            Format::A2b10g10r10SscaledPack32 => Self::A2b10g10r10SscaledPack32,
+            Format::A2b10g10r10UintPack32 => Self::A2b10g10r10UintPack32,
+            Format::A2b10g10r10SintPack32 => Self::A2b10g10r10SintPack32,
+            Format::R16Unorm => Self::R16Unorm,
+            Format::R16Snorm => Self::R16Snorm,
+            Format::R16Uscaled => Self::R16Uscaled,
+            Format::R16Sscaled => Self::R16Sscaled,
+            Format::R16Uint => Self::R16Uint,
+            Format::R16Sint => Self::R16Sint,
+            Format::R16Sfloat => Self::R16Sfloat,
+            Format::R16g16Unorm => Self::R16g16Unorm,
+            Format::R16g16Snorm => Self::R16g16Snorm,
+            Format::R16g16Uscaled => Self::R16g16Uscaled,
+            Format::R16g16Sscaled => Self::R16g16Sscaled,
+            Format::R16g16Uint => Self::R16g16Uint,
+            Format::R16g16Sint => Self::R16g16Sint,
+            Format::R16g16Sfloat => Self::R16g16Sfloat,
+            Format::R16g16b16Unorm => Self::R16g16b16Unorm,
+            Format::R16g16b16Snorm => Self::R16g16b16Snorm,
+            Format::R16g16b16Uscaled => Self::R16g16b16Uscaled,
+            Format::R16g16b16Sscaled => Self::R16g16b16Sscaled,
+            Format::R16g16b16Uint => Self::R16g16b16Uint,
+            Format::R16g16b16Sint => Self::R16g16b16Sint,
+            Format::R16g16b16Sfloat => Self::R16g16b16Sfloat,
+            Format::R16g16b16a16Unorm => Self::R16g16b16a16Unorm,
+            Format::R16g16b16a16Snorm => Self::R16g16b16a16Snorm,
+            Format::R16g16b16a16Uscaled => Self::R16g16b16a16Uscaled,
+            Format::R16g16b16a16Sscaled => Self::R16g16b16a16Sscaled,
+            Format::R16g16b16a16Uint => Self::R16g16b16a16Uint,
+            Format::R16g16b16a16Sint => Self::R16g16b16a16Sint,
+            Format::R16g16b16a16Sfloat => Self::R16g16b16a16Sfloat,
+            Format::R32Uint => Self::R32Uint,
+            Format::R32Sint => Self::R32Sint,
+            Format::R32Sfloat => Self::R32Sfloat,
+            Format::R32g32Uint => Self::R32g32Uint,
+            Format::R32g32Sint => Self::R32g32Sint,
+            Format::R32g32Sfloat => Self::R32g32Sfloat,
+            Format::R32g32b32Uint => Self::R32g32b32Uint,
+            Format::R32g32b32Sint => Self::R32g32b32Sint,
+            Format::R32g32b32Sfloat => Self::R32g32b32Sfloat,
+            Format::R32g32b32a32Uint => Self::R32g32b32a32Uint,
+            Format::R32g32b32a32Sint => Self::R32g32b32a32Sint,
+            Format::R32g32b32a32Sfloat => Self::R32g32b32a32Sfloat,
+            Format::R64Uint => Self::R64Uint,
+            Format::R64Sint => Self::R64Sint,
+            Format::R64Sfloat => Self::R64Sfloat,
+            Format::R64g64Uint => Self::R64g64Uint,
+            Format::R64g64Sint => Self::R64g64Sint,
+            Format::R64g64Sfloat => Self::R64g64Sfloat,
+            Format::R64g64b64Uint => Self::R64g64b64Uint,
+            Format::R64g64b64Sint => Self::R64g64b64Sint,
+            Format::R64g64b64Sfloat => Self::R64g64b64Sfloat,
+            Format::R64g64b64a64Uint => Self::R64g64b64a64Uint,
+            Format::R64g64b64a64Sint => Self::R64g64b64a64Sint,
+            Format::R64g64b64a64Sfloat => Self::R64g64b64a64Sfloat,
+            Format::B10g11r11UfloatPack32 => Self::B10g11r11UfloatPack32,
+            Format::E5b9g9r9UfloatPack32 => Self::E5b9g9r9UfloatPack32,
+            Format::D16Unorm => Self::D16Unorm,
+            Format::X8D24UnormPack32 => Self::X8D24UnormPack32,
+            Format::D32Sfloat => Self::D32Sfloat,
+            Format::S8Uint => Self::S8Uint,
+            Format::D16UnormS8Uint => Self::D16UnormS8Uint,
+            Format::D24UnormS8Uint => Self::D24UnormS8Uint,
+            Format::D32SfloatS8Uint => Self::D32SfloatS8Uint,
+            Format::Bc1RgbUnormBlock => Self::Bc1RgbUnormBlock,
+            Format::Bc1RgbSrgbBlock => Self::Bc1RgbSrgbBlock,
+            Format::Bc1RgbaUnormBlock => Self::Bc1RgbaUnormBlock,
+            Format::Bc1RgbaSrgbBlock => Self::Bc1RgbaSrgbBlock,
+            Format::Bc2UnormBlock => Self::Bc2UnormBlock,
+            Format::Bc2SrgbBlock => Self::Bc2SrgbBlock,
+            Format::Bc3UnormBlock => Self::Bc3UnormBlock,
+            Format::Bc3SrgbBlock => Self::Bc3SrgbBlock,
+            Format::Bc4UnormBlock => Self::Bc4UnormBlock,
+            Format::Bc4SnormBlock => Self::Bc4SnormBlock,
+            Format::Bc5UnormBlock => Self::Bc5UnormBlock,
+            Format::Bc5SnormBlock => Self::Bc5SnormBlock,
+            Format::Bc6hUfloatBlock => Self::Bc6hUfloatBlock,
+            Format::Bc6hSfloatBlock => Self::Bc6hSfloatBlock,
+            Format::Bc7UnormBlock => Self::Bc7UnormBlock,
+            Format::Bc7SrgbBlock => Self::Bc7SrgbBlock,
+            Format::Etc2R8g8b8UnormBlock => Self::Etc2R8g8b8UnormBlock,
+            Format::Etc2R8g8b8SrgbBlock => Self::Etc2R8g8b8SrgbBlock,
+            Format::Etc2R8g8b8a1UnormBlock => Self::Etc2R8g8b8a1UnormBlock,
+            Format::Etc2R8g8b8a1SrgbBlock => Self::Etc2R8g8b8a1SrgbBlock,
+            Format::Etc2R8g8b8a8UnormBlock => Self::Etc2R8g8b8a8UnormBlock,
+            Format::Etc2R8g8b8a8SrgbBlock => Self::Etc2R8g8b8a8SrgbBlock,
+            Format::EacR11UnormBlock => Self::EacR11UnormBlock,
+            Format::EacR11SnormBlock => Self::EacR11SnormBlock,
+            Format::EacR11g11UnormBlock => Self::EacR11g11UnormBlock,
+            Format::EacR11g11SnormBlock => Self::EacR11g11SnormBlock,
+            Format::Astc4x4UnormBlock => Self::Astc4x4UnormBlock,
+            Format::Astc4x4SrgbBlock => Self::Astc4x4SrgbBlock,
+            Format::Astc5x4UnormBlock => Self::Astc5x4UnormBlock,
+            Format::Astc5x4SrgbBlock => Self::Astc5x4SrgbBlock,
+            Format::Astc5x5UnormBlock => Self::Astc5x5UnormBlock,
+            Format::Astc5x5SrgbBlock => Self::Astc5x5SrgbBlock,
+            Format::Astc6x5UnormBlock => Self::Astc6x5UnormBlock,
+            Format::Astc6x5SrgbBlock => Self::Astc6x5SrgbBlock,
+            Format::Astc6x6UnormBlock => Self::Astc6x6UnormBlock,
+            Format::Astc6x6SrgbBlock => Self::Astc6x6SrgbBlock,
+            Format::Astc8x5UnormBlock => Self::Astc8x5UnormBlock,
+            Format::Astc8x5SrgbBlock => Self::Astc8x5SrgbBlock,
+            Format::Astc8x6UnormBlock => Self::Astc8x6UnormBlock,
+            Format::Astc8x6SrgbBlock => Self::Astc8x6SrgbBlock,
+            Format::Astc8x8UnormBlock => Self::Astc8x8UnormBlock,
+            Format::Astc8x8SrgbBlock => Self::Astc8x8SrgbBlock,
+            Format::Astc10x5UnormBlock => Self::Astc10x5UnormBlock,
+            Format::Astc10x5SrgbBlock => Self::Astc10x5SrgbBlock,
+            Format::Astc10x6UnormBlock => Self::Astc10x6UnormBlock,
+            Format::Astc10x6SrgbBlock => Self::Astc10x6SrgbBlock,
+            Format::Astc10x8UnormBlock => Self::Astc10x8UnormBlock,
+            Format::Astc10x8SrgbBlock => Self::Astc10x8SrgbBlock,
+            Format::Astc10x10UnormBlock => Self::Astc10x10UnormBlock,
+            Format::Astc10x10SrgbBlock => Self::Astc10x10SrgbBlock,
+            Format::Astc12x10UnormBlock => Self::Astc12x10UnormBlock,
+            Format::Astc12x10SrgbBlock => Self::Astc12x10SrgbBlock,
+            Format::Astc12x12UnormBlock => Self::Astc12x12UnormBlock,
+            Format::Astc12x12SrgbBlock => Self::Astc12x12SrgbBlock,
+            Format::G8b8g8r8_422Unorm => Self::G8b8g8r8_422Unorm,
+            Format::B8g8r8g8_422Unorm => Self::B8g8r8g8_422Unorm,
+            Format::G8B8R8_3plane420Unorm => Self::G8B8R8_3plane420Unorm,
+            Format::G8B8r8_2plane420Unorm => Self::G8B8r8_2plane420Unorm,
+            Format::G8B8R8_3plane422Unorm => Self::G8B8R8_3plane422Unorm,
+            Format::G8B8r8_2plane422Unorm => Self::G8B8r8_2plane422Unorm,
+            Format::G8B8R8_3plane444Unorm => Self::G8B8R8_3plane444Unorm,
+            Format::R10x6UnormPack16 => Self::R10x6UnormPack16,
+            Format::R10x6g10x6Unorm2pack16 => Self::R10x6g10x6Unorm2pack16,
+            Format::R10x6g10x6b10x6a10x6Unorm4pack16 => Self::R10x6g10x6b10x6a10x6Unorm4pack16,
+            Format::G10x6b10x6g10x6r10x6_422Unorm4pack16 => {
+                Self::G10x6b10x6g10x6r10x6_422Unorm4pack16
+            }
+            Format::B10x6g10x6r10x6g10x6_422Unorm4pack16 => {
+                Self::B10x6g10x6r10x6g10x6_422Unorm4pack16
+            }
+            Format::G10x6B10x6R10x6_3plane420Unorm3pack16 => {
+                Self::G10x6B10x6R10x6_3plane420Unorm3pack16
+            }
+            Format::G10x6B10x6r10x6_2plane420Unorm3pack16 => {
+                Self::G10x6B10x6r10x6_2plane420Unorm3pack16
+            }
+            Format::G10x6B10x6R10x6_3plane422Unorm3pack16 => {
+                Self::G10x6B10x6R10x6_3plane422Unorm3pack16
+            }
+            Format::G10x6B10x6r10x6_2plane422Unorm3pack16 => {
+                Self::G10x6B10x6r10x6_2plane422Unorm3pack16
+            }
+            Format::G10x6B10x6R10x6_3plane444Unorm3pack16 => {
+                Self::G10x6B10x6R10x6_3plane444Unorm3pack16
+            }
+            Format::R12x4UnormPack16 => Self::R12x4UnormPack16,
+            Format::R12x4g12x4Unorm2pack16 => Self::R12x4g12x4Unorm2pack16,
+            Format::R12x4g12x4b12x4a12x4Unorm4pack16 => Self::R12x4g12x4b12x4a12x4Unorm4pack16,
+            Format::G12x4b12x4g12x4r12x4_422Unorm4pack16 => {
+                Self::G12x4b12x4g12x4r12x4_422Unorm4pack16
+            }
+            Format::B12x4g12x4r12x4g12x4_422Unorm4pack16 => {
+                Self::B12x4g12x4r12x4g12x4_422Unorm4pack16
+            }
+            Format::G12x4B12x4R12x4_3plane420Unorm3pack16 => {
+                Self::G12x4B12x4R12x4_3plane420Unorm3pack16
+            }
+            Format::G12x4B12x4r12x4_2plane420Unorm3pack16 => {
+                Self::G12x4B12x4r12x4_2plane420Unorm3pack16
+            }
+            Format::G12x4B12x4R12x4_3plane422Unorm3pack16 => {
+                Self::G12x4B12x4R12x4_3plane422Unorm3pack16
+            }
+            Format::G12x4B12x4r12x4_2plane422Unorm3pack16 => {
+                Self::G12x4B12x4r12x4_2plane422Unorm3pack16
+            }
+            Format::G12x4B12x4R12x4_3plane444Unorm3pack16 => {
+                Self::G12x4B12x4R12x4_3plane444Unorm3pack16
+            }
+            Format::G16b16g16r16_422Unorm => Self::G16b16g16r16_422Unorm,
+            Format::B16g16r16g16_422Unorm => Self::B16g16r16g16_422Unorm,
+            Format::G16B16R16_3plane420Unorm => Self::G16B16R16_3plane420Unorm,
+            Format::G16B16r16_2plane420Unorm => Self::G16B16r16_2plane420Unorm,
+            Format::G16B16R16_3plane422Unorm => Self::G16B16R16_3plane422Unorm,
+            Format::G16B16r16_2plane422Unorm => Self::G16B16r16_2plane422Unorm,
+            Format::G16B16R16_3plane444Unorm => Self::G16B16R16_3plane444Unorm,
+            Format::Pvrtc1_2bppUnormBlockImg => Self::Pvrtc1_2bppUnormBlockImg,
+            Format::Pvrtc1_4bppUnormBlockImg => Self::Pvrtc1_4bppUnormBlockImg,
+            Format::Pvrtc2_2bppUnormBlockImg => Self::Pvrtc2_2bppUnormBlockImg,
+            Format::Pvrtc2_4bppUnormBlockImg => Self::Pvrtc2_4bppUnormBlockImg,
+            Format::Pvrtc1_2bppSrgbBlockImg => Self::Pvrtc1_2bppSrgbBlockImg,
+            Format::Pvrtc1_4bppSrgbBlockImg => Self::Pvrtc1_4bppSrgbBlockImg,
+            Format::Pvrtc2_2bppSrgbBlockImg => Self::Pvrtc2_2bppSrgbBlockImg,
+            Format::Pvrtc2_4bppSrgbBlockImg => Self::Pvrtc2_4bppSrgbBlockImg,
+            Format::Astc4x4SfloatBlockExt => Self::Astc4x4SfloatBlockExt,
+            Format::Astc5x4SfloatBlockExt => Self::Astc5x4SfloatBlockExt,
+            Format::Astc5x5SfloatBlockExt => Self::Astc5x5SfloatBlockExt,
+            Format::Astc6x5SfloatBlockExt => Self::Astc6x5SfloatBlockExt,
+            Format::Astc6x6SfloatBlockExt => Self::Astc6x6SfloatBlockExt,
+            Format::Astc8x5SfloatBlockExt => Self::Astc8x5SfloatBlockExt,
+            Format::Astc8x6SfloatBlockExt => Self::Astc8x6SfloatBlockExt,
+            Format::Astc8x8SfloatBlockExt => Self::Astc8x8SfloatBlockExt,
+            Format::Astc10x5SfloatBlockExt => Self::Astc10x5SfloatBlockExt,
+            Format::Astc10x6SfloatBlockExt => Self::Astc10x6SfloatBlockExt,
+            Format::Astc10x8SfloatBlockExt => Self::Astc10x8SfloatBlockExt,
+            Format::Astc10x10SfloatBlockExt => Self::Astc10x10SfloatBlockExt,
+            Format::Astc12x10SfloatBlockExt => Self::Astc12x10SfloatBlockExt,
+            Format::Astc12x12SfloatBlockExt => Self::Astc12x12SfloatBlockExt,
+            Format::G8B8r8_2plane444UnormExt => Self::G8B8r8_2plane444UnormExt,
+            Format::G10x6B10x6r10x6_2plane444Unorm3pack16Ext => {
+                Self::G10x6B10x6r10x6_2plane444Unorm3pack16Ext
+            }
+            Format::G12x4B12x4r12x4_2plane444Unorm3pack16Ext => {
+                Self::G12x4B12x4r12x4_2plane444Unorm3pack16Ext
+            }
+            Format::G16B16r16_2plane444UnormExt => Self::G16B16r16_2plane444UnormExt,
+            Format::A4r4g4b4UnormPack16Ext => Self::A4r4g4b4UnormPack16Ext,
+            Format::A4b4g4r4UnormPack16Ext => Self::A4b4g4r4UnormPack16Ext,
+        }
+    }
+}
+
 impl From<ffi::ColorSpaceKhr> for ColorSpaceKhr {
     fn from(color_space: ffi::ColorSpaceKhr) -> Self {
         match color_space {
@@ -1936,6 +2328,38 @@ impl From<ffi::ColorSpaceKhr> for ColorSpaceKhr {
             ffi::ColorSpaceKhr::PassThroughExt => Self::PassThroughExt,
             ffi::ColorSpaceKhr::ExtendedSrgbNonlinearExt => Self::ExtendedSrgbNonlinearExt,
             ffi::ColorSpaceKhr::DisplayNativeAmd => Self::DisplayNativeAmd,
+        }
+    }
+}
+
+impl From<ColorSpaceKhr> for ffi::ColorSpaceKhr {
+    fn from(color_space: ColorSpaceKhr) -> Self {
+        match color_space {
+            ColorSpaceKhr::SrgbNonlinearKhr => Self::SrgbNonlinearKhr,
+            ColorSpaceKhr::DisplayP3NonlinearExt => Self::DisplayP3NonlinearExt,
+            ColorSpaceKhr::ExtendedSrgbLinearExt => Self::ExtendedSrgbLinearExt,
+            ColorSpaceKhr::DisplayP3LinearExt => Self::DisplayP3LinearExt,
+            ColorSpaceKhr::DciP3NonlinearExt => Self::DciP3NonlinearExt,
+            ColorSpaceKhr::Bt709LinearExt => Self::Bt709LinearExt,
+            ColorSpaceKhr::Bt709NonlinearExt => Self::Bt709NonlinearExt,
+            ColorSpaceKhr::Bt2020LinearExt => Self::Bt2020LinearExt,
+            ColorSpaceKhr::Hdr10St2084Ext => Self::Hdr10St2084Ext,
+            ColorSpaceKhr::DolbyvisionExt => Self::DolbyvisionExt,
+            ColorSpaceKhr::Hdr10HlgExt => Self::Hdr10HlgExt,
+            ColorSpaceKhr::AdobergbLinearExt => Self::AdobergbLinearExt,
+            ColorSpaceKhr::AdobergbNonlinearExt => Self::AdobergbNonlinearExt,
+            ColorSpaceKhr::PassThroughExt => Self::PassThroughExt,
+            ColorSpaceKhr::ExtendedSrgbNonlinearExt => Self::ExtendedSrgbNonlinearExt,
+            ColorSpaceKhr::DisplayNativeAmd => Self::DisplayNativeAmd,
+        }
+    }
+}
+
+impl From<&SharingMode<'_>> for ffi::SharingMode {
+    fn from(sharing_mode: &SharingMode) -> Self {
+        match sharing_mode {
+            SharingMode::Exclusive => Self::Exclusive,
+            SharingMode::Concurrent(_) => Self::Concurrent,
         }
     }
 }
@@ -2076,6 +2500,19 @@ impl From<ffi::PresentModeKhr> for PresentModeKhr {
             ffi::PresentModeKhr::FifoRelaxedKhr => Self::FifoRelaxedKhr,
             ffi::PresentModeKhr::SharedDemandRefreshKhr => Self::SharedDemandRefreshKhr,
             ffi::PresentModeKhr::SharedContinuousRefreshKhr => Self::SharedContinuousRefreshKhr,
+        }
+    }
+}
+
+impl From<PresentModeKhr> for ffi::PresentModeKhr {
+    fn from(present_mode: PresentModeKhr) -> Self {
+        match present_mode {
+            PresentModeKhr::ImmediateKhr => Self::ImmediateKhr,
+            PresentModeKhr::MailboxKhr => Self::MailboxKhr,
+            PresentModeKhr::FifoKhr => Self::FifoKhr,
+            PresentModeKhr::FifoRelaxedKhr => Self::FifoRelaxedKhr,
+            PresentModeKhr::SharedDemandRefreshKhr => Self::SharedDemandRefreshKhr,
+            PresentModeKhr::SharedContinuousRefreshKhr => Self::SharedContinuousRefreshKhr,
         }
     }
 }
