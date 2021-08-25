@@ -41,6 +41,13 @@ pub struct Instance {
     _marker: PhantomData<ffi::OpaqueInstance>,
 }
 
+#[derive(Default)]
+pub struct InstanceBuilder<'a> {
+    application_info: Option<&'a ApplicationInfo>,
+    layers: Option<&'a [&'a str]>,
+    extensions: Option<&'a [&'a str]>,
+}
+
 pub struct PhysicalDevice<'a> {
     handle: NonNull<ffi::OpaquePhysicalDevice>,
     dispatch_loader: DispatchLoaderPhysicalDevice,
@@ -606,126 +613,12 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 
 impl Instance {
-    pub fn new(
-        application_info: Option<&ApplicationInfo>,
-        layers: Option<&[&str]>,
-        extensions: Option<&[&str]>,
-    ) -> Result<Self> {
-        let file_name = if cfg!(unix) {
-            "libvulkan.so"
-        } else if cfg!(windows) {
-            "vulkan-1.dll"
-        } else {
-            ""
-        };
-        let lib = DynamicLibrary::new(file_name);
-        let vk_get_instance_proc_addr: ffi::PFN_vkGetInstanceProcAddr =
-            unsafe { std::mem::transmute(lib.get_proc_addr("vkGetInstanceProcAddr")) };
-        let mut dispatch_loader = DispatchLoaderInstance::new(vk_get_instance_proc_addr);
+    pub fn new() -> Result<Self> {
+        InstanceBuilder::new().build()
+    }
 
-        let names_c = application_info.map(|i| {
-            (
-                i.application_name
-                    .as_ref()
-                    .map(|name| CString::new(name.as_bytes()).unwrap()),
-                i.engine_name
-                    .as_ref()
-                    .map(|name| CString::new(name.as_bytes()).unwrap()),
-            )
-        });
-
-        let app_info_c =
-            application_info
-                .zip(names_c.as_ref())
-                .map(|(i, (app_name, engine_name))| {
-                    let p_application_name = app_name
-                        .as_ref()
-                        .map_or(std::ptr::null(), |name| name.as_ptr());
-                    let p_engine_name = engine_name
-                        .as_ref()
-                        .map_or(std::ptr::null(), |name| name.as_ptr());
-
-                    ffi::ApplicationInfo {
-                        s_type: ffi::StructureType::ApplicationInfo,
-                        p_next: std::ptr::null(),
-                        p_application_name,
-                        application_version: i.application_version.0,
-                        p_engine_name,
-                        engine_version: i.engine_version.0,
-                        api_version: i.api_version.0,
-                    }
-                });
-
-        let p_application_info = app_info_c.as_ref().map_or(std::ptr::null(), |i| i);
-
-        let layers_c: Option<Vec<CString>> = layers.map(|l| {
-            l.iter()
-                .map(|name| CString::new(name.as_bytes()).unwrap())
-                .collect()
-        });
-        let extensions_c: Option<Vec<CString>> = extensions.map(|e| {
-            e.iter()
-                .map(|name| CString::new(name.as_bytes()).unwrap())
-                .collect()
-        });
-
-        let layer_ptrs: Option<Vec<*const i8>> = layers_c
-            .as_ref()
-            .map(|l| l.iter().map(|name| name.as_ptr()).collect());
-        let extension_ptrs: Option<Vec<*const i8>> = extensions_c
-            .as_ref()
-            .map(|e| e.iter().map(|name| name.as_ptr()).collect());
-
-        let enabled_layer_count = layer_ptrs.as_ref().map_or(0, |ptrs| ptrs.len() as u32);
-        let enabled_extension_count = extension_ptrs.as_ref().map_or(0, |ptrs| ptrs.len() as u32);
-
-        let pp_enabled_layer_names = layer_ptrs
-            .as_ref()
-            .map_or(std::ptr::null(), |ptrs| ptrs.as_ptr());
-        let pp_enabled_extension_names = extension_ptrs
-            .as_ref()
-            .map_or(std::ptr::null(), |ptrs| ptrs.as_ptr());
-
-        let create_info = ffi::InstanceCreateInfo {
-            s_type: ffi::StructureType::InstanceCreateInfo,
-            p_next: std::ptr::null(),
-            flags: 0,
-            p_application_info,
-            enabled_layer_count,
-            pp_enabled_layer_names,
-            enabled_extension_count,
-            pp_enabled_extension_names,
-        };
-
-        let mut handle = MaybeUninit::uninit();
-        let result = unsafe {
-            (dispatch_loader.vk_create_instance.unwrap())(
-                &create_info,
-                std::ptr::null(),
-                handle.as_mut_ptr(),
-            )
-        };
-
-        match result {
-            ffi::Result::Success => {
-                let handle = unsafe { handle.assume_init() };
-                unsafe { dispatch_loader.load(handle) };
-
-                Ok(Self {
-                    handle: unsafe { NonNull::new_unchecked(handle) },
-                    dispatch_loader,
-                    _lib: lib,
-                    _marker: PhantomData,
-                })
-            }
-            ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
-            ffi::Result::ErrorOutOfDeviceMemory => Err(Error::OutOfDeviceMemory),
-            ffi::Result::ErrorInitializationFailed => Err(Error::InitializationFailed),
-            ffi::Result::ErrorLayerNotPresent => Err(Error::LayerNotPresent),
-            ffi::Result::ErrorExtensionNotPresent => Err(Error::ExtensionNotPresent),
-            ffi::Result::ErrorIncompatibleDriver => Err(Error::IncompatibleDriver),
-            _ => unreachable!(),
-        }
+    pub fn builder<'a>() -> InstanceBuilder<'a> {
+        Default::default()
     }
 
     pub fn enumerate_physical_devices(&self) -> Vec<PhysicalDevice<'_>> {
@@ -910,6 +803,146 @@ impl Drop for Instance {
                 self.handle.as_ptr(),
                 std::ptr::null(),
             );
+        }
+    }
+}
+
+impl<'a> InstanceBuilder<'a> {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with_application_info(&mut self, application_info: &'a ApplicationInfo) -> &mut Self {
+        self.application_info = Some(application_info);
+        self
+    }
+
+    pub fn with_layers(&mut self, layers: &'a [&'a str]) -> &mut Self {
+        self.layers = Some(layers);
+        self
+    }
+
+    pub fn with_extensions(&mut self, extensions: &'a [&'a str]) -> &mut Self {
+        self.extensions = Some(extensions);
+        self
+    }
+
+    pub fn build(&self) -> Result<Instance> {
+        let file_name = if cfg!(unix) {
+            "libvulkan.so"
+        } else if cfg!(windows) {
+            "vulkan-1.dll"
+        } else {
+            ""
+        };
+
+        let lib = DynamicLibrary::new(file_name);
+        let vk_get_instance_proc_addr: ffi::PFN_vkGetInstanceProcAddr =
+            unsafe { std::mem::transmute(lib.get_proc_addr("vkGetInstanceProcAddr")) };
+        let mut dispatch_loader = DispatchLoaderInstance::new(vk_get_instance_proc_addr);
+
+        let names_c = self.application_info.map(|i| {
+            (
+                i.application_name
+                    .as_ref()
+                    .map(|name| CString::new(name.as_bytes()).unwrap()),
+                i.engine_name
+                    .as_ref()
+                    .map(|name| CString::new(name.as_bytes()).unwrap()),
+            )
+        });
+
+        let app_info_c =
+            self.application_info
+                .zip(names_c.as_ref())
+                .map(|(i, (app_name, engine_name))| {
+                    let p_application_name = app_name
+                        .as_ref()
+                        .map_or(std::ptr::null(), |name| name.as_ptr());
+                    let p_engine_name = engine_name
+                        .as_ref()
+                        .map_or(std::ptr::null(), |name| name.as_ptr());
+
+                    ffi::ApplicationInfo {
+                        s_type: ffi::StructureType::ApplicationInfo,
+                        p_next: std::ptr::null(),
+                        p_application_name,
+                        application_version: i.application_version.0,
+                        p_engine_name,
+                        engine_version: i.engine_version.0,
+                        api_version: i.api_version.0,
+                    }
+                });
+
+        let p_application_info = app_info_c.as_ref().map_or(std::ptr::null(), |i| i);
+
+        let layers_c: Option<Vec<CString>> = self.layers.map(|l| {
+            l.iter()
+                .map(|name| CString::new(name.as_bytes()).unwrap())
+                .collect()
+        });
+        let extensions_c: Option<Vec<CString>> = self.extensions.map(|e| {
+            e.iter()
+                .map(|name| CString::new(name.as_bytes()).unwrap())
+                .collect()
+        });
+
+        let layer_ptrs: Option<Vec<*const i8>> = layers_c
+            .as_ref()
+            .map(|l| l.iter().map(|name| name.as_ptr()).collect());
+        let extension_ptrs: Option<Vec<*const i8>> = extensions_c
+            .as_ref()
+            .map(|e| e.iter().map(|name| name.as_ptr()).collect());
+
+        let enabled_layer_count = layer_ptrs.as_ref().map_or(0, |ptrs| ptrs.len() as u32);
+        let enabled_extension_count = extension_ptrs.as_ref().map_or(0, |ptrs| ptrs.len() as u32);
+
+        let pp_enabled_layer_names = layer_ptrs
+            .as_ref()
+            .map_or(std::ptr::null(), |ptrs| ptrs.as_ptr());
+        let pp_enabled_extension_names = extension_ptrs
+            .as_ref()
+            .map_or(std::ptr::null(), |ptrs| ptrs.as_ptr());
+
+        let create_info = ffi::InstanceCreateInfo {
+            s_type: ffi::StructureType::InstanceCreateInfo,
+            p_next: std::ptr::null(),
+            flags: 0,
+            p_application_info,
+            enabled_layer_count,
+            pp_enabled_layer_names,
+            enabled_extension_count,
+            pp_enabled_extension_names,
+        };
+
+        let mut handle = MaybeUninit::uninit();
+        let result = unsafe {
+            (dispatch_loader.vk_create_instance.unwrap())(
+                &create_info,
+                std::ptr::null(),
+                handle.as_mut_ptr(),
+            )
+        };
+
+        match result {
+            ffi::Result::Success => {
+                let handle = unsafe { handle.assume_init() };
+                unsafe { dispatch_loader.load(handle) };
+
+                Ok(Instance {
+                    handle: unsafe { NonNull::new_unchecked(handle) },
+                    dispatch_loader,
+                    _lib: lib,
+                    _marker: PhantomData,
+                })
+            }
+            ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
+            ffi::Result::ErrorOutOfDeviceMemory => Err(Error::OutOfDeviceMemory),
+            ffi::Result::ErrorInitializationFailed => Err(Error::InitializationFailed),
+            ffi::Result::ErrorLayerNotPresent => Err(Error::LayerNotPresent),
+            ffi::Result::ErrorExtensionNotPresent => Err(Error::ExtensionNotPresent),
+            ffi::Result::ErrorIncompatibleDriver => Err(Error::IncompatibleDriver),
+            _ => unreachable!(),
         }
     }
 }

@@ -17,7 +17,11 @@ fn main() {
         vk::KHR_SURFACE_EXTENSION_NAME,
         vk::KHR_WIN32_SURFACE_EXTENSION_NAME,
     ];
-    let instance = vk::Instance::new(Some(&app_info), None, Some(extensions)).unwrap();
+    let instance = vk::Instance::builder()
+        .with_application_info(&app_info)
+        .with_extensions(extensions)
+        .build()
+        .unwrap();
 
     if let Some(v) = instance.version() {
         println!("Vulkan API {}", v);
