@@ -80,8 +80,31 @@ fn main() {
         .find(|available_present_mode| *available_present_mode == vk::PresentModeKhr::MailboxKhr)
         .unwrap_or(vk::PresentModeKhr::FifoKhr);
 
-    dbg!(surface_format);
-    dbg!(present_mode);
+    let mut image_count = surface_capabilities.min_image_count + 1;
+
+    if surface_capabilities.max_image_count > 0
+        && image_count > surface_capabilities.max_image_count
+    {
+        image_count = surface_capabilities.max_image_count;
+    }
+
+    let swapchain = vk::SwapchainBuilderKhr::new(
+        &surface,
+        image_count,
+        surface_format.format,
+        surface_format.color_space,
+        surface_capabilities.current_extent,
+        vk::ImageUsageFlagsBuilder::new()
+            .color_attachment(true)
+            .build(),
+        vk::SharingMode::Exclusive,
+        surface_capabilities.current_transform,
+        vk::CompositeAlphaKhr::OpaqueKhr,
+        present_mode,
+        true,
+    )
+    .build(&device)
+    .unwrap();
 
     event_loop.run_return(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;

@@ -109,6 +109,22 @@ pub struct SwapchainKhr<'a> {
     #[cfg(target_pointer_width = "64")]
     _marker: PhantomData<ffi::OpaqueSwapchainKhr>,
 }
+pub struct SwapchainBuilderKhr<'a, 'b> {
+    flags: SwapchainCreateFlagsKhr,
+    surface: &'a SurfaceKhr<'a>,
+    min_image_count: u32,
+    image_format: Format,
+    image_color_space: ColorSpaceKhr,
+    image_extent: Extent2D,
+    image_array_layers: u32,
+    image_usage: ImageUsageFlags,
+    image_sharing_mode: SharingMode<'b>,
+    pre_transform: SurfaceTransformKhr,
+    composite_alpha: CompositeAlphaKhr,
+    present_mode: PresentModeKhr,
+    clipped: bool,
+    _old_swapchain: Option<()>,
+}
 
 #[derive(Default)]
 struct DispatchLoaderInstance {
@@ -512,6 +528,7 @@ pub struct SurfaceFormatKhr {
     pub color_space: ColorSpaceKhr,
 }
 
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Extent2D {
     width: u32,
     height: u32,
@@ -552,23 +569,6 @@ pub enum PresentModeKhr {
     FifoRelaxedKhr,
     SharedDemandRefreshKhr,
     SharedContinuousRefreshKhr,
-}
-
-pub struct SwapchainCreateInfoKhr<'a> {
-    pub flags: SwapchainCreateFlagsKhr,
-    pub surface: &'a SurfaceKhr<'a>,
-    pub min_image_count: u32,
-    pub image_format: Format,
-    pub image_color_space: ColorSpaceKhr,
-    pub image_extent: Extent2D,
-    pub image_array_layers: u32,
-    pub image_usage: ImageUsageFlags,
-    pub image_sharing_mode: SharingMode<'a>,
-    pub pre_transform: SurfaceTransformKhr,
-    pub composite_alpha: CompositeAlphaKhr,
-    pub present_mode: PresentModeKhr,
-    pub clipped: bool,
-    pub old_swapchain: Option<()>,
 }
 
 #[derive(Default, Clone, Copy)]
@@ -1343,71 +1343,6 @@ impl<'a> Device<'a> {
             panic!("Could not create Semaphore: {:?}", result)
         }
     }
-
-    pub fn create_swapchain_khr(
-        &self,
-        create_info: SwapchainCreateInfoKhr,
-    ) -> Result<SwapchainKhr<'_>> {
-        let ffi_create_info = ffi::SwapchainCreateInfoKhr {
-            s_type: ffi::StructureType::SwapchainCreateInfoKhr,
-            p_next: std::ptr::null(),
-            flags: create_info.flags.0,
-            #[cfg(target_pointer_width = "64")]
-            surface: create_info.surface.handle.as_ptr(),
-            #[cfg(not(target_pointer_width = "64"))]
-            surface: create_info.surface.handle.get(),
-            min_image_count: create_info.min_image_count,
-            image_format: create_info.image_format.into(),
-            image_color_space: create_info.image_color_space.into(),
-            image_extent: create_info.image_extent.into(),
-            image_array_layers: create_info.image_array_layers,
-            image_usage: create_info.image_usage.0,
-            image_sharing_mode: (&create_info.image_sharing_mode).into(),
-            queue_family_index_count: match create_info.image_sharing_mode {
-                SharingMode::Exclusive => 0,
-                SharingMode::Concurrent(s) => s.len() as u32,
-            },
-            queue_family_indices: match create_info.image_sharing_mode {
-                SharingMode::Exclusive => std::ptr::null(),
-                SharingMode::Concurrent(s) => s.as_ptr().cast(),
-            },
-            pre_transform: create_info.pre_transform.into(),
-            composite_alpha: create_info.composite_alpha.into(),
-            present_mode: create_info.present_mode.into(),
-            clipped: create_info.clipped.into(),
-            old_swapchain: std::ptr::null_mut(),
-        };
-
-        let mut handle = MaybeUninit::uninit();
-
-        let result = unsafe {
-            (self.dispatch_loader.vk_create_swapchain_khr.unwrap())(
-                self.handle.as_ptr(),
-                &ffi_create_info,
-                std::ptr::null(),
-                handle.as_mut_ptr(),
-            )
-        };
-
-        match result {
-            ffi::Result::Success => Ok(SwapchainKhr {
-                #[cfg(target_pointer_width = "64")]
-                handle: unsafe { NonNull::new_unchecked(handle.assume_init()) },
-                #[cfg(not(target_pointer_width = "64"))]
-                handle: unsafe { NonZeroU64::new_unchecked(handle.assume_init()) },
-                device: self,
-                #[cfg(target_pointer_width = "64")]
-                _marker: PhantomData,
-            }),
-            ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
-            ffi::Result::ErrorOutOfDeviceMemory => Err(Error::OutOfDeviceMemory),
-            ffi::Result::ErrorDeviceLost => Err(Error::DeviceLost),
-            ffi::Result::ErrorSurfaceLostKhr => Err(Error::SurfaceLostKhr),
-            ffi::Result::ErrorNativeWindowInUseKhr => Err(Error::NativeWindowInUseKhr),
-            ffi::Result::ErrorInitializationFailed => Err(Error::InitializationFailed),
-            _ => unreachable!(),
-        }
-    }
 }
 
 impl<'a> Drop for Device<'a> {
@@ -1487,6 +1422,111 @@ impl<'a> Drop for SurfaceKhr<'a> {
                 self.handle.get(),
                 std::ptr::null(),
             );
+        }
+    }
+}
+
+impl<'a, 'b> SwapchainBuilderKhr<'a, 'b> {
+    pub fn new(
+        surface: &'a SurfaceKhr<'a>,
+        min_image_count: u32,
+        image_format: Format,
+        image_color_space: ColorSpaceKhr,
+        image_extent: Extent2D,
+        image_usage: ImageUsageFlags,
+        image_sharing_mode: SharingMode<'b>,
+        pre_transform: SurfaceTransformKhr,
+        composite_alpha: CompositeAlphaKhr,
+        present_mode: PresentModeKhr,
+        clipped: bool,
+    ) -> Self {
+        Self {
+            flags: Default::default(),
+            surface,
+            min_image_count,
+            image_format,
+            image_color_space,
+            image_extent,
+            image_array_layers: 1,
+            image_usage,
+            image_sharing_mode,
+            pre_transform,
+            composite_alpha,
+            present_mode,
+            clipped,
+            _old_swapchain: Default::default(),
+        }
+    }
+
+    pub fn with_flags(mut self, flags: SwapchainCreateFlagsKhr) -> Self {
+        self.flags = flags;
+        self
+    }
+
+    pub fn with_image_array_layers(mut self, image_array_layers: u32) -> Self {
+        self.image_array_layers = image_array_layers;
+        self
+    }
+
+    pub fn build(self, device: &'a Device<'_>) -> Result<SwapchainKhr<'a>> {
+        let create_info = ffi::SwapchainCreateInfoKhr {
+            s_type: ffi::StructureType::SwapchainCreateInfoKhr,
+            p_next: std::ptr::null(),
+            flags: self.flags.0,
+            #[cfg(target_pointer_width = "64")]
+            surface: self.surface.handle.as_ptr(),
+            #[cfg(not(target_pointer_width = "64"))]
+            surface: self.surface.handle.get(),
+            min_image_count: self.min_image_count,
+            image_format: self.image_format.into(),
+            image_color_space: self.image_color_space.into(),
+            image_extent: self.image_extent.into(),
+            image_array_layers: self.image_array_layers,
+            image_usage: self.image_usage.0,
+            image_sharing_mode: (&self.image_sharing_mode).into(),
+            queue_family_index_count: match self.image_sharing_mode {
+                SharingMode::Exclusive => 0,
+                SharingMode::Concurrent(s) => s.len() as u32,
+            },
+            queue_family_indices: match self.image_sharing_mode {
+                SharingMode::Exclusive => std::ptr::null(),
+                SharingMode::Concurrent(s) => s.as_ptr().cast(),
+            },
+            pre_transform: self.pre_transform.into(),
+            composite_alpha: self.composite_alpha.into(),
+            present_mode: self.present_mode.into(),
+            clipped: self.clipped.into(),
+            old_swapchain: std::ptr::null_mut(),
+        };
+
+        let mut handle = MaybeUninit::uninit();
+
+        let result = unsafe {
+            (device.dispatch_loader.vk_create_swapchain_khr.unwrap())(
+                device.handle.as_ptr(),
+                &create_info,
+                std::ptr::null(),
+                handle.as_mut_ptr(),
+            )
+        };
+
+        match result {
+            ffi::Result::Success => Ok(SwapchainKhr {
+                #[cfg(target_pointer_width = "64")]
+                handle: unsafe { NonNull::new_unchecked(handle.assume_init()) },
+                #[cfg(not(target_pointer_width = "64"))]
+                handle: unsafe { NonZeroU64::new_unchecked(handle.assume_init()) },
+                device,
+                #[cfg(target_pointer_width = "64")]
+                _marker: PhantomData,
+            }),
+            ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
+            ffi::Result::ErrorOutOfDeviceMemory => Err(Error::OutOfDeviceMemory),
+            ffi::Result::ErrorDeviceLost => Err(Error::DeviceLost),
+            ffi::Result::ErrorSurfaceLostKhr => Err(Error::SurfaceLostKhr),
+            ffi::Result::ErrorNativeWindowInUseKhr => Err(Error::NativeWindowInUseKhr),
+            ffi::Result::ErrorInitializationFailed => Err(Error::InitializationFailed),
+            _ => unreachable!(),
         }
     }
 }
@@ -1749,6 +1789,20 @@ impl ApiVersion {
 impl std::fmt::Display for ApiVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}.{}.{}", self.major(), self.minor(), self.patch())
+    }
+}
+
+impl Extent2D {
+    pub fn new(width: u32, height: u32) -> Self {
+        Self { width, height }
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
     }
 }
 
