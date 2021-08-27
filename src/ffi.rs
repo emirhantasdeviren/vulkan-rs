@@ -66,6 +66,13 @@ pub struct OpaqueSwapchainKhr {
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
 
+#[repr(C)]
+#[cfg(target_pointer_width = "64")]
+pub struct OpaqueImage {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
 #[derive(PartialEq, Eq, Debug)]
 #[repr(i32)]
 pub enum Result {
@@ -325,6 +332,16 @@ pub type PFN_vkDestroySwapchainKHR = unsafe extern "system" fn(
     #[cfg(not(target_pointer_width = "64"))] swapchain: u64,
     p_allocator: *const AllocationCallbacks,
 );
+pub type PFN_vkGetSwapchainImagesKHR = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    #[cfg(target_pointer_width = "64")] swapchain: *mut OpaqueSwapchainKhr,
+    #[cfg(not(target_pointer_width = "64"))] swapchain: u64,
+    p_swapchain_image_count: *mut u32,
+    #[cfg(target_pointer_width = "64")] p_swapchain_images: *mut *mut OpaqueImage,
+    #[cfg(not(target_pointer_width = "64"))] p_swapchain_images: *mut u64,
+) -> self::Result;
+
+
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;

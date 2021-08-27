@@ -109,6 +109,7 @@ pub struct SwapchainKhr<'a> {
     #[cfg(target_pointer_width = "64")]
     _marker: PhantomData<ffi::OpaqueSwapchainKhr>,
 }
+
 pub struct SwapchainBuilderKhr<'a, 'b> {
     flags: SwapchainCreateFlagsKhr,
     surface: &'a SurfaceKhr<'a>,
@@ -124,6 +125,16 @@ pub struct SwapchainBuilderKhr<'a, 'b> {
     present_mode: PresentModeKhr,
     clipped: bool,
     _old_swapchain: Option<()>,
+}
+
+pub struct Image<'a> {
+    #[cfg(target_pointer_width = "64")]
+    handle: NonNull<ffi::OpaqueImage>,
+    #[cfg(not(target_pointer_width = "64"))]
+    handle: NonZeroU64,
+    device: &'a Device<'a>,
+    #[cfg(target_pointer_width = "64")]
+    _marker: PhantomData<ffi::OpaqueImage>,
 }
 
 #[derive(Default)]
@@ -178,6 +189,7 @@ struct DispatchLoaderDevice {
     vk_destroy_semaphore: ffi::PFN_vkDestroySemaphore,
     vk_create_swapchain_khr: Option<ffi::PFN_vkCreateSwapchainKHR>,
     vk_destroy_swapchain_khr: Option<ffi::PFN_vkDestroySwapchainKHR>,
+    vk_get_swapchain_images_khr: Option<ffi::PFN_vkGetSwapchainImagesKHR>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1343,6 +1355,71 @@ impl<'a> Device<'a> {
             panic!("Could not create Semaphore: {:?}", result)
         }
     }
+
+    pub fn get_swapchain_images_khr<'b: 'a, 'c: 'b>(
+        &'b self,
+        swapchain: &'c SwapchainKhr<'b>,
+    ) -> Option<Result<Vec<Image<'c>>>> {
+        self.dispatch_loader.vk_get_swapchain_images_khr.map(|pfn| {
+            let mut p_swapchain_image_count = MaybeUninit::uninit();
+            let result = unsafe {
+                pfn(
+                    self.handle.as_ptr(),
+                    #[cfg(target_pointer_width = "64")]
+                    swapchain.handle.as_ptr(),
+                    #[cfg(not(target_pointer_width = "64"))]
+                    swapchain.handle.get(),
+                    p_swapchain_image_count.as_mut_ptr(),
+                    std::ptr::null_mut(),
+                )
+            };
+
+            match result {
+                ffi::Result::Success => {
+                    let capacity = unsafe { p_swapchain_image_count.assume_init() as usize };
+                    let mut swapchain_images = Vec::with_capacity(capacity);
+                    let result = unsafe {
+                        pfn(
+                            self.handle.as_ptr(),
+                            #[cfg(target_pointer_width = "64")]
+                            swapchain.handle.as_ptr(),
+                            #[cfg(not(target_pointer_width = "64"))]
+                            swapchain.handle.get(),
+                            p_swapchain_image_count.as_mut_ptr(),
+                            swapchain_images.as_mut_ptr(),
+                        )
+                    };
+
+                    match result {
+                        ffi::Result::Success => {
+                            let new_len = unsafe { p_swapchain_image_count.assume_init() as usize };
+                            unsafe { swapchain_images.set_len(new_len) };
+                            Ok(swapchain_images.into_iter().map(|image| {
+                                Image {
+                                    #[cfg(target_pointer_width = "64")]
+                                    handle: unsafe { NonNull::new_unchecked(image) },
+                                    #[cfg(not(target_pointer_width = "64"))]
+                                    handle: unsafe { NonZeroU64::new_unchecked(image) },
+                                    device: self,
+                                    #[cfg(target_pointer_width = "64")]
+                                    _marker: PhantomData,
+                                }
+                            })
+                            .collect())
+                        }
+                        ffi::Result::Incomplete => todo!(),
+                        ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
+                        ffi::Result::ErrorOutOfDeviceMemory => Err(Error::OutOfDeviceMemory),
+                        _ => unreachable!(),
+                    }
+                }
+                ffi::Result::Incomplete => todo!(),
+                ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
+                ffi::Result::ErrorOutOfDeviceMemory => Err(Error::OutOfDeviceMemory),
+                _ => unreachable!(),
+            }
+        })
+    }
 }
 
 impl<'a> Drop for Device<'a> {
@@ -1740,6 +1817,11 @@ impl DispatchLoaderDevice {
             vk_destroy_swapchain_khr: vk_get_device_proc_addr(
                 device_handle,
                 "vkDestroySwapchainKHR\0".as_ptr().cast(),
+            )
+            .map(|pfn| std::mem::transmute(pfn)),
+            vk_get_swapchain_images_khr: vk_get_device_proc_addr(
+                device_handle,
+                "vkGetSwapchainImagesKHR\0".as_ptr().cast(),
             )
             .map(|pfn| std::mem::transmute(pfn)),
         }

@@ -106,6 +106,11 @@ fn main() {
     .build(&device)
     .unwrap();
 
+    let swapchain_images = device
+        .get_swapchain_images_khr(&swapchain)
+        .unwrap()
+        .unwrap();
+
     event_loop.run_return(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
 
