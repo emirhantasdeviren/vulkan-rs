@@ -73,6 +73,13 @@ pub struct OpaqueImage {
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
 
+#[repr(C)]
+#[cfg(target_pointer_width = "64")]
+pub struct OpaqueImageView {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
 #[derive(PartialEq, Eq, Debug)]
 #[repr(i32)]
 pub enum Result {
@@ -163,6 +170,22 @@ pub enum CommandBufferLevel {
     Secondary = 1,
 }
 
+#[repr(i32)]
+pub enum ImageAspectFlagBits {
+    ColorBit = 0x00000001,
+    DepthBit = 0x00000002,
+    StencilBit = 0x00000004,
+    MetadataBit = 0x00000008,
+    Plane0Bit = 0x00000010,
+    Plane1Bit = 0x00000020,
+    Plane2Bit = 0x00000040,
+    MemoryPlane0BitExt = 0x00000080,
+    MemoryPlane1BitExt = 0x00000100,
+    MemoryPlane2BitExt = 0x00000200,
+    MemoryPlane3BitExt = 0x00000400,
+}
+pub type ImageAspectFlags = Flags;
+
 #[repr(C)]
 pub struct Extent2D {
     pub width: u32,
@@ -174,6 +197,15 @@ pub struct Extent3D {
     width: u32,
     height: u32,
     depth: u32,
+}
+
+#[repr(C)]
+pub struct ImageSubresourceRange {
+    aspect_mask: ImageAspectFlags,
+    base_mip_level: u32,
+    level_count: u32,
+    base_array_layer: u32,
+    layer_count: u32,
 }
 
 type PFN_vkAllocationFunction = unsafe extern "system" fn(
@@ -340,7 +372,13 @@ pub type PFN_vkGetSwapchainImagesKHR = unsafe extern "system" fn(
     #[cfg(target_pointer_width = "64")] p_swapchain_images: *mut *mut OpaqueImage,
     #[cfg(not(target_pointer_width = "64"))] p_swapchain_images: *mut u64,
 ) -> self::Result;
-
+pub type PFN_vkCreateImageView = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    p_create_info: *const ImageViewCreateInfo,
+    p_allocator: *const AllocationCallbacks,
+    #[cfg(target_pointer_width = "64")] p_view: *mut *mut OpaqueImageView,
+    #[cfg(not(target_pointer_width = "64"))] p_view: *mut u64,
+) -> self::Result;
 
 
 type InstanceCreateFlags = Flags;
@@ -1058,6 +1096,28 @@ pub enum SharingMode {
 }
 
 #[repr(i32)]
+pub enum ComponentSwizzle {
+    Identity = 0,
+    Zero = 1,
+    One = 2,
+    R = 3,
+    G = 4,
+    B = 5,
+    A = 6,
+}
+
+#[repr(i32)]
+pub enum ImageViewType {
+    OneD = 0,
+    TwoD = 1,
+    ThreeD = 2,
+    Cube = 3,
+    OneDArray = 4,
+    TwoDArray = 5,
+    CubeArray = 6,
+}
+
+#[repr(i32)]
 pub enum SurfaceTransformFlagBitsKhr {
     IdentityBitKhr = 0x00000001,
     Rotate90BitKhr = 0x00000002,
@@ -1104,6 +1164,13 @@ pub enum QueueFlagBits {
     ProtectedBit = 0x00000010,
 }
 pub type QueueFlags = Flags;
+
+#[repr(i32)]
+pub enum ImageViewCreateFlagBits {
+    FragmentDensityMapDynamicBitExt = 0x00000001,
+    FragmentDensityMapDeferredBitExt = 0x00000002,
+}
+pub type ImageViewCreateFlags = Flags;
 
 #[repr(C)]
 pub struct SurfaceCapabilitiesKhr {
@@ -1169,4 +1236,27 @@ pub struct SwapchainCreateInfoKhr {
     pub old_swapchain: *mut OpaqueSwapchainKhr,
     #[cfg(not(target_pointer_width = "64"))]
     pub old_swapchain: u64,
+}
+
+#[repr(C)]
+pub struct ComponentMapping {
+    r: ComponentSwizzle,
+    g: ComponentSwizzle,
+    b: ComponentSwizzle,
+    a: ComponentSwizzle,
+}
+
+#[repr(C)]
+pub struct ImageViewCreateInfo {
+    s_type: StructureType,
+    p_next: *const c_void,
+    flags: ImageViewCreateFlags,
+    #[cfg(target_pointer_width = "64")]
+    image: *mut OpaqueImage,
+    #[cfg(not(target_pointer_width = "64"))]
+    image: u64,
+    view_type: ImageViewType,
+    format: Format,
+    components: ComponentMapping,
+    subresource_range: ImageSubresourceRange,
 }
