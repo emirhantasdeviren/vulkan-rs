@@ -379,7 +379,12 @@ pub type PFN_vkCreateImageView = unsafe extern "system" fn(
     #[cfg(target_pointer_width = "64")] p_view: *mut *mut OpaqueImageView,
     #[cfg(not(target_pointer_width = "64"))] p_view: *mut u64,
 ) -> self::Result;
-
+pub type PFN_vkDestroyImageView = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    #[cfg(target_pointer_width = "64")] image_view: *mut OpaqueImageView,
+    #[cfg(not(target_pointer_width = "64"))] image_view: u64,
+    p_allocator: *const AllocationCallbacks,
+);
 
 type InstanceCreateFlags = Flags;
 type SampleCountFlags = Flags;
@@ -1100,10 +1105,10 @@ pub enum ComponentSwizzle {
     Identity = 0,
     Zero = 1,
     One = 2,
-    R = 3,
-    G = 4,
-    B = 5,
-    A = 6,
+    Red = 3,
+    Green = 4,
+    Blue = 5,
+    Alpha = 6,
 }
 
 #[repr(i32)]

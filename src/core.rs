@@ -137,6 +137,16 @@ pub struct Image<'a> {
     _marker: PhantomData<ffi::OpaqueImage>,
 }
 
+pub struct ImageView<'a> {
+    #[cfg(target_pointer_width = "64")]
+    handle: NonNull<ffi::OpaqueImageView>,
+    #[cfg(not(target_pointer_width = "64"))]
+    handle: NonZeroU64,
+    device: &'a Device<'a>,
+    #[cfg(target_pointer_width = "64")]
+    _marker: PhantomData<ffi::OpaqueImageView>,
+}
+
 #[derive(Default)]
 struct DispatchLoaderInstance {
     vk_get_instance_proc_addr: Option<ffi::PFN_vkGetInstanceProcAddr>,
@@ -190,6 +200,8 @@ struct DispatchLoaderDevice {
     vk_create_swapchain_khr: Option<ffi::PFN_vkCreateSwapchainKHR>,
     vk_destroy_swapchain_khr: Option<ffi::PFN_vkDestroySwapchainKHR>,
     vk_get_swapchain_images_khr: Option<ffi::PFN_vkGetSwapchainImagesKHR>,
+    vk_create_image_view: ffi::PFN_vkCreateImageView,
+    vk_destroy_image_view: ffi::PFN_vkDestroyImageView,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -562,6 +574,11 @@ pub enum ImageUsage {
 pub struct ImageUsageFlags(u32);
 #[derive(Default)]
 pub struct ImageUsageFlagsBuilder(u32);
+
+pub enum ImageViewCreate {
+    FragmentDensityMapDynamicExt,
+    FragmentDensityMapDeferredExt,
+}
 
 pub enum SwapchainCreateKhr {
     SplitInstanceBindRegionsKhr,
@@ -1394,8 +1411,9 @@ impl<'a> Device<'a> {
                         ffi::Result::Success => {
                             let new_len = unsafe { p_swapchain_image_count.assume_init() as usize };
                             unsafe { swapchain_images.set_len(new_len) };
-                            Ok(swapchain_images.into_iter().map(|image| {
-                                Image {
+                            Ok(swapchain_images
+                                .into_iter()
+                                .map(|image| Image {
                                     #[cfg(target_pointer_width = "64")]
                                     handle: unsafe { NonNull::new_unchecked(image) },
                                     #[cfg(not(target_pointer_width = "64"))]
@@ -1403,9 +1421,8 @@ impl<'a> Device<'a> {
                                     device: self,
                                     #[cfg(target_pointer_width = "64")]
                                     _marker: PhantomData,
-                                }
-                            })
-                            .collect())
+                                })
+                                .collect())
                         }
                         ffi::Result::Incomplete => todo!(),
                         ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
@@ -1824,6 +1841,18 @@ impl DispatchLoaderDevice {
                 "vkGetSwapchainImagesKHR\0".as_ptr().cast(),
             )
             .map(|pfn| std::mem::transmute(pfn)),
+            vk_create_image_view: vk_get_device_proc_addr(
+                device_handle,
+                "vkCreateImageView\0".as_ptr().cast(),
+            )
+            .map(|pfn| std::mem::transmute(pfn))
+            .unwrap(),
+            vk_destroy_image_view: vk_get_device_proc_addr(
+                device_handle,
+                "vkDestroyImageView\0".as_ptr().cast(),
+            )
+            .map(|pfn| std::mem::transmute(pfn))
+            .unwrap(),
         }
     }
 }
