@@ -15,7 +15,7 @@ fn main() {
     };
     let extensions = &[
         vk::KHR_SURFACE_EXTENSION_NAME,
-        vk::KHR_WIN32_SURFACE_EXTENSION_NAME,
+        vk::KHR_XLIB_SURFACE_EXTENSION_NAME,
     ];
     let instance = vk::Instance::builder()
         .with_application_info(&app_info)
@@ -110,6 +110,26 @@ fn main() {
         .get_swapchain_images_khr(&swapchain)
         .unwrap()
         .unwrap();
+
+    let _image_views: Vec<_> = swapchain_images
+        .iter()
+        .map(|image| {
+            vk::ImageViewBuilder::new(
+                image,
+                vk::ImageViewType::TwoD,
+                surface_format.format,
+                vk::ImageSubresourceRange::new(
+                    vk::ImageAspectFlagsBuilder::new().color(true).build(),
+                    0,
+                    1,
+                    0,
+                    1,
+                ),
+            )
+            .build(&device)
+            .unwrap()
+        })
+        .collect();
 
     event_loop.run_return(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;

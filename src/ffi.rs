@@ -131,6 +131,7 @@ pub enum StructureType {
     DeviceQueueCreateInfo = 2,
     DeviceCreateInfo = 3,
     SemaphoreCreateInfo = 9,
+    ImageViewCreateInfo = 15,
     CommandPoolCreateInfo = 39,
     CommandBufferAllocateInfo = 40,
     SwapchainCreateInfoKhr = 1000001000,
@@ -201,11 +202,11 @@ pub struct Extent3D {
 
 #[repr(C)]
 pub struct ImageSubresourceRange {
-    aspect_mask: ImageAspectFlags,
-    base_mip_level: u32,
-    level_count: u32,
-    base_array_layer: u32,
-    layer_count: u32,
+    pub aspect_mask: ImageAspectFlags,
+    pub base_mip_level: u32,
+    pub level_count: u32,
+    pub base_array_layer: u32,
+    pub layer_count: u32,
 }
 
 type PFN_vkAllocationFunction = unsafe extern "system" fn(
@@ -1245,23 +1246,23 @@ pub struct SwapchainCreateInfoKhr {
 
 #[repr(C)]
 pub struct ComponentMapping {
-    r: ComponentSwizzle,
-    g: ComponentSwizzle,
-    b: ComponentSwizzle,
-    a: ComponentSwizzle,
+    pub r: ComponentSwizzle,
+    pub g: ComponentSwizzle,
+    pub b: ComponentSwizzle,
+    pub a: ComponentSwizzle,
 }
 
 #[repr(C)]
 pub struct ImageViewCreateInfo {
-    s_type: StructureType,
-    p_next: *const c_void,
-    flags: ImageViewCreateFlags,
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub flags: ImageViewCreateFlags,
     #[cfg(target_pointer_width = "64")]
-    image: *mut OpaqueImage,
+    pub image: *mut OpaqueImage,
     #[cfg(not(target_pointer_width = "64"))]
-    image: u64,
-    view_type: ImageViewType,
-    format: Format,
-    components: ComponentMapping,
-    subresource_range: ImageSubresourceRange,
+    pub image: u64,
+    pub view_type: ImageViewType,
+    pub format: Format,
+    pub components: ComponentMapping,
+    pub subresource_range: ImageSubresourceRange,
 }
