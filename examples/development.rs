@@ -1,4 +1,14 @@
-use vulkan_rs::core as vk;
+use vulkan_rs::device::PhysicalDeviceType;
+use vulkan_rs::format::Format;
+use vulkan_rs::init::{ApiVersion, ApplicationInfo, Instance};
+use vulkan_rs::resource::{
+    ImageAspectFlagsBuilder, ImageSubresourceRange, ImageUsageFlagsBuilder, ImageViewBuilder,
+    ImageViewType, SharingMode,
+};
+use vulkan_rs::wsi::{ColorSpaceKhr, CompositeAlphaKhr, PresentModeKhr, SwapchainBuilderKhr};
+use vulkan_rs::wsi::{
+    KHR_SURFACE_EXTENSION_NAME, KHR_SWAPCHAIN_EXTENSION_NAME, KHR_XLIB_SURFACE_EXTENSION_NAME,
+};
 
 use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
@@ -6,18 +16,15 @@ use winit::platform::run_return::EventLoopExtRunReturn;
 use winit::window::WindowBuilder;
 
 fn main() {
-    let app_info = vk::ApplicationInfo {
+    let app_info = ApplicationInfo {
         application_name: Some(String::from("Hello Triangle")),
-        application_version: vk::ApiVersion::new(0, 0, 1, 0),
+        application_version: ApiVersion::new(0, 0, 1, 0),
         engine_name: None,
         engine_version: Default::default(),
-        api_version: vk::ApiVersion::V1_0,
+        api_version: ApiVersion::V1_0,
     };
-    let extensions = &[
-        vk::KHR_SURFACE_EXTENSION_NAME,
-        vk::KHR_XLIB_SURFACE_EXTENSION_NAME,
-    ];
-    let instance = vk::Instance::builder()
+    let extensions = &[KHR_SURFACE_EXTENSION_NAME, KHR_XLIB_SURFACE_EXTENSION_NAME];
+    let instance = Instance::builder()
         .with_application_info(&app_info)
         .with_extensions(extensions)
         .build()
@@ -35,15 +42,12 @@ fn main() {
         .find(|physical_device| {
             let properties = physical_device.properties();
             println!("{}", properties.device_name);
-            properties.device_type == vk::PhysicalDeviceType::DiscreteGpu
+            properties.device_type == PhysicalDeviceType::DiscreteGpu
         })
         .expect("Could not find suitable GPU.");
 
-    let device = physical_device.create_device(
-        &[0],
-        &[&[1.0f32]],
-        Some(&[vk::KHR_SWAPCHAIN_EXTENSION_NAME]),
-    );
+    let device =
+        physical_device.create_device(&[0], &[&[1.0f32]], Some(&[KHR_SWAPCHAIN_EXTENSION_NAME]));
 
     let _queue = device.get_device_queue(0, 0);
 
@@ -67,8 +71,8 @@ fn main() {
         .unwrap()
         .into_iter()
         .find(|available_format| {
-            available_format.format == vk::Format::B8g8r8a8Srgb
-                && available_format.color_space == vk::ColorSpaceKhr::SrgbNonlinearKhr
+            available_format.format == Format::B8g8r8a8Srgb
+                && available_format.color_space == ColorSpaceKhr::SrgbNonlinearKhr
         })
         .unwrap();
 
@@ -77,8 +81,8 @@ fn main() {
         .unwrap()
         .unwrap()
         .into_iter()
-        .find(|available_present_mode| *available_present_mode == vk::PresentModeKhr::MailboxKhr)
-        .unwrap_or(vk::PresentModeKhr::FifoKhr);
+        .find(|available_present_mode| *available_present_mode == PresentModeKhr::MailboxKhr)
+        .unwrap_or(PresentModeKhr::FifoKhr);
 
     let mut image_count = surface_capabilities.min_image_count + 1;
 
@@ -88,18 +92,16 @@ fn main() {
         image_count = surface_capabilities.max_image_count;
     }
 
-    let swapchain = vk::SwapchainBuilderKhr::new(
+    let swapchain = SwapchainBuilderKhr::new(
         &surface,
         image_count,
         surface_format.format,
         surface_format.color_space,
         surface_capabilities.current_extent,
-        vk::ImageUsageFlagsBuilder::new()
-            .color_attachment(true)
-            .build(),
-        vk::SharingMode::Exclusive,
+        ImageUsageFlagsBuilder::new().color_attachment(true).build(),
+        SharingMode::Exclusive,
         surface_capabilities.current_transform,
-        vk::CompositeAlphaKhr::OpaqueKhr,
+        CompositeAlphaKhr::OpaqueKhr,
         present_mode,
         true,
     )
@@ -114,12 +116,12 @@ fn main() {
     let _image_views: Vec<_> = swapchain_images
         .iter()
         .map(|image| {
-            vk::ImageViewBuilder::new(
+            ImageViewBuilder::new(
                 image,
-                vk::ImageViewType::TwoD,
+                ImageViewType::TwoD,
                 surface_format.format,
-                vk::ImageSubresourceRange::new(
-                    vk::ImageAspectFlagsBuilder::new().color(true).build(),
+                ImageSubresourceRange::new(
+                    ImageAspectFlagsBuilder::new().color(true).build(),
                     0,
                     1,
                     0,
