@@ -38,7 +38,6 @@ fn main() {
 
     let physical_device = instance
         .enumerate_physical_devices()
-        .into_iter()
         .find(|physical_device| {
             let properties = physical_device.properties();
             println!("{}", properties.device_name);
@@ -49,7 +48,7 @@ fn main() {
     let device =
         physical_device.create_device(&[0], &[&[1.0f32]], Some(&[KHR_SWAPCHAIN_EXTENSION_NAME]));
 
-    let _queue = device.get_device_queue(0, 0);
+    let _queue = device.get_queue(0, 0).unwrap();
 
     let mut event_loop = EventLoop::new();
     let window = WindowBuilder::new()

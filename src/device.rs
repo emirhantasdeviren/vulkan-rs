@@ -26,6 +26,7 @@ pub struct Device<'a> {
     _marker: PhantomData<(ffi::OpaqueDevice, &'a Instance)>,
 }
 
+#[derive(Debug)]
 pub struct Queue<'a> {
     handle: NonNull<ffi::OpaqueQueue>,
     _marker: PhantomData<(ffi::OpaqueQueue, &'a Device<'a>)>,
@@ -365,7 +366,7 @@ impl<'a> PhysicalDevice<'a> {
 }
 
 impl<'a> Device<'a> {
-    pub fn get_device_queue(&self, queue_family_index: usize, queue_index: usize) -> Queue<'_> {
+    pub fn get_queue(&self, queue_family_index: usize, queue_index: usize) -> Option<Queue<'_>> {
         let mut handle = MaybeUninit::uninit();
         unsafe {
             (self.dispatch_loader.vk_get_device_queue)(
@@ -376,10 +377,10 @@ impl<'a> Device<'a> {
             );
         }
 
-        Queue {
-            handle: unsafe { NonNull::new_unchecked(handle.assume_init()) },
+        NonNull::new(unsafe { handle.assume_init() }).map(|handle| Queue {
+            handle,
             _marker: PhantomData,
-        }
+        })
     }
 
     pub fn create_command_pool(&self, queue_family_index: usize) -> CommandPool<'_> {

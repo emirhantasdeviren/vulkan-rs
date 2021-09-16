@@ -103,7 +103,7 @@ impl Instance {
         Default::default()
     }
 
-    pub fn enumerate_physical_devices(&self) -> Vec<PhysicalDevice<'_>> {
+    pub fn enumerate_physical_devices(&self) -> impl ExactSizeIterator<Item = PhysicalDevice<'_>> {
         let mut physical_device_count = MaybeUninit::uninit();
         let vk_enumerate_physical_devices =
             self.dispatch_loader.vk_enumerate_physical_devices.unwrap();
@@ -128,14 +128,11 @@ impl Instance {
             if result == ffi::Result::Success {
                 let new_len = unsafe { physical_device_count.assume_init() as usize };
                 unsafe { physical_devices.set_len(new_len) };
-                physical_devices
-                    .into_iter()
-                    .map(|p| PhysicalDevice {
-                        handle: unsafe { NonNull::new_unchecked(p) },
-                        dispatch_loader: DispatchLoaderPhysicalDevice::new(self),
-                        _marker: PhantomData,
-                    })
-                    .collect()
+                physical_devices.into_iter().map(move |p| PhysicalDevice {
+                    handle: unsafe { NonNull::new_unchecked(p) },
+                    dispatch_loader: DispatchLoaderPhysicalDevice::new(self),
+                    _marker: PhantomData,
+                })
             } else {
                 panic!("Could not write phsyical devices to Vec. {:?}", result);
             }
