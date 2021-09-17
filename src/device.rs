@@ -191,6 +191,15 @@ impl<'a> PhysicalDevice<'a> {
         }
     }
 
+    /// # Errors
+    ///
+    /// If `"VK_KHR_surface"` extension is not enabled then [`None`] is
+    /// returned.
+    ///
+    /// List of possible [`Error`](crate::core::Error) variants.
+    /// - [`Error::OutOfHostMemory`]
+    /// - [`Error::OutOfDeviceMemory`]
+    /// - [`Error::SurfaceLostKhr`]
     pub fn get_surface_formats_khr(
         &self,
         surface: &SurfaceKhr,
