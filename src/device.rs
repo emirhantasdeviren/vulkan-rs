@@ -8,6 +8,7 @@ use crate::core::{Error, Result};
 use crate::ffi;
 use crate::init::{ApiVersion, DispatchLoaderDevice, DispatchLoaderPhysicalDevice, Instance};
 use crate::resource::{Image, ImageUsageFlags};
+use crate::shaders::ShaderModule;
 use crate::sync::Semaphore;
 use crate::wsi::{
     CompositeAlphaFlagsKhr, PresentModeKhr, SurfaceCapabilitiesKhr, SurfaceFormatKhr, SurfaceKhr,
@@ -196,10 +197,10 @@ impl<'a> PhysicalDevice<'a> {
     /// If `"VK_KHR_surface"` extension is not enabled then [`None`] is
     /// returned.
     ///
-    /// List of possible [`Error`](crate::core::Error) variants.
-    /// - [`Error::OutOfHostMemory`]
-    /// - [`Error::OutOfDeviceMemory`]
-    /// - [`Error::SurfaceLostKhr`]
+    /// List of possible [`Error`] variants.
+    /// - [`OutOfHostMemory`](Error::OutOfHostMemory)
+    /// - [`OutOfDeviceMemory`](Error::OutOfDeviceMemory)
+    /// - [`SurfaceLostKhr`](Error::SurfaceLostKhr)
     pub fn get_surface_formats_khr(
         &self,
         surface: &SurfaceKhr,
@@ -521,6 +522,43 @@ impl<'a> Device<'a> {
                 _ => unreachable!(),
             }
         })
+    }
+
+    pub fn create_shader_module(&self, code: &[u8]) -> Result<ShaderModule<'_>> {
+        let create_info = ffi::ShaderModuleCreateInfo {
+            s_type: ffi::StructureType::ShaderModuleCreateInfo,
+            p_next: std::ptr::null(),
+            flags: 0,
+            code_size: code.len(),
+            p_code: code.as_ptr().cast(),
+        };
+
+        let mut p_shader_module = MaybeUninit::uninit();
+
+        let result = unsafe {
+            (self.dispatch_loader.vk_create_shader_module)(
+                self.handle.as_ptr(),
+                &create_info,
+                std::ptr::null(),
+                p_shader_module.as_mut_ptr(),
+            )
+        };
+
+        match result {
+            ffi::Result::Success => Ok(ShaderModule {
+                #[cfg(target_pointer_width = "64")]
+                handle: unsafe { NonNull::new_unchecked(p_shader_module.assume_init()) },
+                #[cfg(not(target_pointer_width = "64"))]
+                handle: unsafe { NonZeroU64::new_unchecked(p_shader_module.assume_init()) },
+                device: self,
+                #[cfg(target_pointer_width = "64")]
+                _marker: PhantomData,
+            }),
+            ffi::Result::ErrorOutOfHostMemory => Err(Error::OutOfHostMemory),
+            ffi::Result::ErrorOutOfDeviceMemory => Err(Error::OutOfDeviceMemory),
+            ffi::Result::ErrorInvalidShaderNv => Err(Error::InvalidShaderNv),
+            _ => unreachable!(),
+        }
     }
 }
 

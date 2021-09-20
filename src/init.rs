@@ -18,14 +18,14 @@ pub struct Instance {
     _marker: PhantomData<ffi::OpaqueInstance>,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct InstanceBuilder<'a> {
     application_info: Option<&'a ApplicationInfo>,
     layers: Option<&'a [&'a str]>,
     extensions: Option<&'a [&'a str]>,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct ApplicationInfo {
     pub application_name: Option<String>,
     pub application_version: ApiVersion,
@@ -34,7 +34,7 @@ pub struct ApplicationInfo {
     pub api_version: ApiVersion,
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct ApiVersion(u32);
 
 #[derive(Default)]
@@ -92,6 +92,8 @@ pub(crate) struct DispatchLoaderDevice {
     pub(crate) vk_get_swapchain_images_khr: Option<ffi::PFN_vkGetSwapchainImagesKHR>,
     pub(crate) vk_create_image_view: ffi::PFN_vkCreateImageView,
     pub(crate) vk_destroy_image_view: ffi::PFN_vkDestroyImageView,
+    pub(crate) vk_create_shader_module: ffi::PFN_vkCreateShaderModule,
+    pub(crate) vk_destroy_shader_module: ffi::PFN_vkDestroyShaderModule,
 }
 
 impl Instance {
@@ -271,6 +273,14 @@ impl Instance {
                     ApiVersion(version.assume_init())
                 }
             })
+    }
+}
+
+impl std::fmt::Debug for Instance {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Instance")
+            .field("handle", &self.handle)
+            .finish_non_exhaustive()
     }
 }
 
@@ -649,6 +659,18 @@ impl DispatchLoaderDevice {
             vk_destroy_image_view: vk_get_device_proc_addr(
                 device_handle,
                 "vkDestroyImageView\0".as_ptr().cast(),
+            )
+            .map(|pfn| std::mem::transmute(pfn))
+            .unwrap(),
+            vk_create_shader_module: vk_get_device_proc_addr(
+                device_handle,
+                "vkCreateShaderModule\0".as_ptr().cast(),
+            )
+            .map(|pfn| std::mem::transmute(pfn))
+            .unwrap(),
+            vk_destroy_shader_module: vk_get_device_proc_addr(
+                device_handle,
+                "vkDestroyShaderModule\0".as_ptr().cast(),
             )
             .map(|pfn| std::mem::transmute(pfn))
             .unwrap(),

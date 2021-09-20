@@ -7,7 +7,7 @@ use vulkan_rs::resource::{
 };
 use vulkan_rs::wsi::{ColorSpaceKhr, CompositeAlphaKhr, PresentModeKhr, SwapchainBuilderKhr};
 use vulkan_rs::wsi::{
-    KHR_SURFACE_EXTENSION_NAME, KHR_SWAPCHAIN_EXTENSION_NAME, KHR_XLIB_SURFACE_EXTENSION_NAME,
+    KHR_SURFACE_EXTENSION_NAME, KHR_SWAPCHAIN_EXTENSION_NAME, KHR_WIN32_SURFACE_EXTENSION_NAME,
 };
 
 use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent};
@@ -23,7 +23,7 @@ fn main() {
         engine_version: Default::default(),
         api_version: ApiVersion::V1_0,
     };
-    let extensions = &[KHR_SURFACE_EXTENSION_NAME, KHR_XLIB_SURFACE_EXTENSION_NAME];
+    let extensions = &[KHR_SURFACE_EXTENSION_NAME, KHR_WIN32_SURFACE_EXTENSION_NAME];
     let instance = Instance::builder()
         .with_application_info(&app_info)
         .with_extensions(extensions)
@@ -131,6 +131,12 @@ fn main() {
             .unwrap()
         })
         .collect();
+
+    let vert = std::fs::read("examples/vert.spv").unwrap();
+    let frag = std::fs::read("examples/frag.spv").unwrap();
+
+    let vert_module = device.create_shader_module(&vert).unwrap();
+    let frag_module = device.create_shader_module(&frag).unwrap();
 
     event_loop.run_return(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;

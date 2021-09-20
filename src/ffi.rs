@@ -80,6 +80,13 @@ pub struct OpaqueImageView {
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
 
+#[repr(C)]
+#[cfg(target_pointer_width = "64")]
+pub struct OpaqueShaderModule {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
 #[derive(PartialEq, Eq, Debug)]
 #[repr(i32)]
 pub enum Result {
@@ -132,6 +139,7 @@ pub enum StructureType {
     DeviceCreateInfo = 3,
     SemaphoreCreateInfo = 9,
     ImageViewCreateInfo = 15,
+    ShaderModuleCreateInfo = 16,
     CommandPoolCreateInfo = 39,
     CommandBufferAllocateInfo = 40,
     SwapchainCreateInfoKhr = 1000001000,
@@ -384,6 +392,19 @@ pub type PFN_vkDestroyImageView = unsafe extern "system" fn(
     device: *mut OpaqueDevice,
     #[cfg(target_pointer_width = "64")] image_view: *mut OpaqueImageView,
     #[cfg(not(target_pointer_width = "64"))] image_view: u64,
+    p_allocator: *const AllocationCallbacks,
+);
+pub type PFN_vkCreateShaderModule = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    p_create_info: *const ShaderModuleCreateInfo,
+    p_allocator: *const AllocationCallbacks,
+    #[cfg(target_pointer_width = "64")] p_shader_module: *mut *mut OpaqueShaderModule,
+    #[cfg(not(target_pointer_width = "64"))] p_shader_module: *mut u64,
+) -> self::Result;
+pub type PFN_vkDestroyShaderModule = unsafe extern "system" fn(
+    device: *mut OpaqueDevice,
+    #[cfg(target_pointer_width = "64")] shader_module: *mut OpaqueShaderModule,
+    #[cfg(not(target_pointer_width = "64"))] shader_module: u64,
     p_allocator: *const AllocationCallbacks,
 );
 
@@ -1178,6 +1199,8 @@ pub enum ImageViewCreateFlagBits {
 }
 pub type ImageViewCreateFlags = Flags;
 
+pub type ShaderModuleCreateFlags = Flags;
+
 #[repr(C)]
 pub struct SurfaceCapabilitiesKhr {
     pub min_image_count: u32,
@@ -1265,4 +1288,13 @@ pub struct ImageViewCreateInfo {
     pub format: Format,
     pub components: ComponentMapping,
     pub subresource_range: ImageSubresourceRange,
+}
+
+#[repr(C)]
+pub struct ShaderModuleCreateInfo {
+    pub s_type: StructureType,
+    pub p_next: *const c_void,
+    pub flags: ShaderModuleCreateFlags,
+    pub code_size: usize,
+    pub p_code: *const u32,
 }
