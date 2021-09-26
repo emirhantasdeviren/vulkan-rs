@@ -7,6 +7,7 @@ pub mod device;
 pub mod format;
 /// An application must initialize Vulkan by creating [`Instance`](init::Instance) object.
 pub mod init;
+pub mod pipeline;
 pub mod resource;
 pub mod shaders;
 pub mod sync;

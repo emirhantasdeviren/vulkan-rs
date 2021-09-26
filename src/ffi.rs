@@ -1727,7 +1727,7 @@ pub struct PipelineViewportStateCreateInfo {
     viewport_count: u32,
     p_viewports: *const Viewport,
     scissor_count: u32,
-    p_scissors: *const Rect2D
+    p_scissors: *const Rect2D,
 }
 
 #[repr(C)]

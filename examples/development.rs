@@ -1,6 +1,7 @@
 use vulkan_rs::device::PhysicalDeviceType;
 use vulkan_rs::format::Format;
 use vulkan_rs::init::{ApiVersion, ApplicationInfo, Instance};
+use vulkan_rs::pipeline::{PipelineShaderStageCreateInfo, ShaderStage};
 use vulkan_rs::resource::{
     ImageAspectFlagsBuilder, ImageSubresourceRange, ImageUsageFlagsBuilder, ImageViewBuilder,
     ImageViewType, SharingMode,
@@ -137,6 +138,13 @@ fn main() {
 
     let vert_module = device.create_shader_module(&vert).unwrap();
     let frag_module = device.create_shader_module(&frag).unwrap();
+
+    let vert_shader_stage = PipelineShaderStageCreateInfo::new(&vert_module);
+    let frag_shader_stage =
+        PipelineShaderStageCreateInfo::new(&frag_module).with_stage(ShaderStage::Fragment);
+
+    let shader_stages = [vert_shader_stage, frag_shader_stage];
+    dbg!(&shader_stages);
 
     event_loop.run_return(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
