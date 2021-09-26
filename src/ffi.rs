@@ -7,6 +7,7 @@ pub type Bool32 = u32;
 pub type DeviceAddress = u64;
 pub type DeviceSize = u64;
 pub type Flags = u32;
+pub type SampleMask = u32;
 
 #[repr(C)]
 pub struct OpaqueInstance {
@@ -83,6 +84,34 @@ pub struct OpaqueImageView {
 #[repr(C)]
 #[cfg(target_pointer_width = "64")]
 pub struct OpaqueShaderModule {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+#[cfg(target_pointer_width = "64")]
+pub struct OpaquePipelineCache {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+#[cfg(target_pointer_width = "64")]
+pub struct OpaquePipelineLayout {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+#[cfg(target_pointer_width = "64")]
+pub struct OpaquePipeline {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+#[cfg(target_pointer_width = "64")]
+pub struct OpaqueRenderPass {
     _data: [u8; 0],
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
@@ -206,6 +235,25 @@ pub struct Extent3D {
     width: u32,
     height: u32,
     depth: u32,
+}
+
+#[repr(C)]
+pub struct Offset2D {
+    x: i32,
+    y: i32,
+}
+
+#[repr(C)]
+pub struct Offset3D {
+    x: i32,
+    y: i32,
+    z: i32,
+}
+
+#[repr(C)]
+pub struct Rect2D {
+    offset: Offset2D,
+    extent: Extent2D,
 }
 
 #[repr(C)]
@@ -409,7 +457,6 @@ pub type PFN_vkDestroyShaderModule = unsafe extern "system" fn(
 );
 
 type InstanceCreateFlags = Flags;
-type SampleCountFlags = Flags;
 type DeviceQueueCreateFlags = Flags;
 type DeviceCreateFlags = Flags;
 type CommandPoolCreateFlags = Flags;
@@ -1145,6 +1192,204 @@ pub enum ImageViewType {
 }
 
 #[repr(i32)]
+pub enum BlendFactor {
+    Zero = 0,
+    One = 1,
+    SrcColor = 2,
+    OneMinusSrcColor = 3,
+    DstColor = 4,
+    OneMinusDstColor = 5,
+    SrcAlpha = 6,
+    OneMinusSrcAlpha = 7,
+    DstAlpha = 8,
+    OneMinusDstAlpha = 9,
+    ConstantColor = 10,
+    OneMinusConstantColor = 11,
+    ConstantAlpha = 12,
+    OneMinusConstantAlpha = 13,
+    SrcAlphaSaturate = 14,
+    Src1Color = 15,
+    OneMinusSrc1Color = 16,
+    Src1Alpha = 17,
+    OneMinusSrc1Alpha = 18,
+}
+
+#[repr(i32)]
+pub enum BlendOp {
+    Add = 0,
+    Subtract = 1,
+    ReverseSubtract = 2,
+    Min = 3,
+    Max = 4,
+    ZeroExt = 1000148000,
+    SrcExt = 1000148001,
+    DstExt = 1000148002,
+    SrcOverExt = 1000148003,
+    DstOverExt = 1000148004,
+    SrcInExt = 1000148005,
+    DstInExt = 1000148006,
+    SrcOutExt = 1000148007,
+    DstOutExt = 1000148008,
+    SrcAtopExt = 1000148009,
+    DstAtopExt = 1000148010,
+    XorExt = 1000148011,
+    MultiplyExt = 1000148012,
+    ScreenExt = 1000148013,
+    OverlayExt = 1000148014,
+    DarkenExt = 1000148015,
+    LightenExt = 1000148016,
+    ColordodgeExt = 1000148017,
+    ColorburnExt = 1000148018,
+    HardlightExt = 1000148019,
+    SoftlightExt = 1000148020,
+    DifferenceExt = 1000148021,
+    ExclusionExt = 1000148022,
+    InvertExt = 1000148023,
+    InvertRgbExt = 1000148024,
+    LineardodgeExt = 1000148025,
+    LinearburnExt = 1000148026,
+    VividlightExt = 1000148027,
+    LinearlightExt = 1000148028,
+    PinlightExt = 1000148029,
+    HardmixExt = 1000148030,
+    HslHueExt = 1000148031,
+    HslSaturationExt = 1000148032,
+    HslColorExt = 1000148033,
+    HslLuminosityExt = 1000148034,
+    PlusExt = 1000148035,
+    PlusClampedExt = 1000148036,
+    PlusClampedAlphaExt = 1000148037,
+    PlusDarkerExt = 1000148038,
+    MinusExt = 1000148039,
+    MinusClampedExt = 1000148040,
+    ContrastExt = 1000148041,
+    InvertOvgExt = 1000148042,
+    RedExt = 1000148043,
+    GreenExt = 1000148044,
+    BlueExt = 1000148045,
+}
+
+#[repr(i32)]
+pub enum CompareOp {
+    Never = 0,
+    Less = 1,
+    Equal = 2,
+    LessOrEqual = 3,
+    Greater = 4,
+    NotEqual = 5,
+    GreaterOrEqual = 6,
+    Always = 7,
+}
+
+#[repr(i32)]
+pub enum DynamicState {
+    Viewport = 0,
+    Scissor = 1,
+    LineWidth = 2,
+    DepthBias = 3,
+    BlendConstants = 4,
+    DepthBounds = 5,
+    StencilCompareMask = 6,
+    StencilWriteMask = 7,
+    StencilReference = 8,
+    ViewportWScalingNv = 1000087000,
+    DiscardRectangleExt = 1000099000,
+    SampleLocationsExt = 1000143000,
+    RayTracingPipelineStackSizeKhr = 1000347000,
+    ViewportShadingRatePaletteNv = 1000164004,
+    ViewportCoarseSampleOrderNv = 1000164006,
+    ExclusiveScissorNv = 1000205001,
+    FragmentShadingRateKhr = 1000226000,
+    LineStippleExt = 1000259000,
+    CullModeExt = 1000267000,
+    FrontFaceExt = 1000267001,
+    PrimitiveTopologyExt = 1000267002,
+    ViewportWithCountExt = 1000267003,
+    ScissorWithCountExt = 1000267004,
+    VertexInputBindingStrideExt = 1000267005,
+    DepthTestEnableExt = 1000267006,
+    DepthWriteEnableExt = 1000267007,
+    DepthCompareOpExt = 1000267008,
+    DepthBoundsTestEnableExt = 1000267009,
+    StencilTestEnableExt = 1000267010,
+    StencilOpExt = 1000267011,
+    VertexInputExt = 1000352000,
+    PatchControlPointsExt = 1000377000,
+    RasterizerDiscardEnableExt = 1000377001,
+    DepthBiasEnableExt = 1000377002,
+    LogicOpExt = 1000377003,
+    PrimitiveRestartEnableExt = 1000377004,
+    ColorWriteEnableExt = 1000381000,
+}
+
+#[repr(i32)]
+pub enum FrontFace {
+    CounterClockwise = 0,
+    Clockwise = 1,
+}
+
+#[repr(i32)]
+pub enum VertexInputRate {
+    Vertex = 0,
+    Instance = 1,
+}
+
+#[repr(i32)]
+pub enum PrimitiveTopology {
+    PointList = 0,
+    LineList = 1,
+    LineStrip = 2,
+    TriangleList = 3,
+    TriangleStrip = 4,
+    TriangleFan = 5,
+    LineListWithAdjacency = 6,
+    LineStripWithAdjacency = 7,
+    TriangleListWithAdjacency = 8,
+    TriangleStripWithAdjacency = 9,
+    PatchList = 10,
+}
+
+#[repr(i32)]
+pub enum PolygonMode {
+    Fill = 0,
+    Line = 1,
+    Point = 2,
+    FillRectangleNv = 1000153000,
+}
+
+#[repr(i32)]
+pub enum StencilOp {
+    Keep = 0,
+    Zero = 1,
+    Replace = 2,
+    IncrementAndClamp = 3,
+    DecrementAndClamp = 4,
+    Invert = 5,
+    IncrementAndWrap = 6,
+    DecrementAndWrap = 7,
+}
+
+#[repr(i32)]
+pub enum LogicOp {
+    Clear = 0,
+    And = 1,
+    AndReverse = 2,
+    Copy = 3,
+    AndInverted = 4,
+    NoOp = 5,
+    Xor = 6,
+    Or = 7,
+    Nor = 8,
+    Equivalent = 9,
+    Invert = 10,
+    OrReverse = 11,
+    CopyInverted = 12,
+    OrInverted = 13,
+    Nand = 14,
+    Set = 15,
+}
+
+#[repr(i32)]
 pub enum SurfaceTransformFlagBitsKhr {
     IdentityBitKhr = 0x00000001,
     Rotate90BitKhr = 0x00000002,
@@ -1166,6 +1411,18 @@ pub enum CompositeAlphaFlagBitsKhr {
 }
 pub type CompositeAlphaFlagsKhr = Flags;
 pub type SurfaceTransformFlagsKhr = Flags;
+
+#[repr(i32)]
+pub enum SampleCountFlagBits {
+    OneBit = 0x00000001,
+    TwoBit = 0x00000002,
+    FourBit = 0x00000004,
+    EightBit = 0x00000008,
+    SixteenBit = 0x00000010,
+    ThirtyTwoBit = 0x00000020,
+    SixtyFourBit = 0x00000040,
+}
+type SampleCountFlags = Flags;
 
 #[repr(i32)]
 pub enum ImageUsageFlagBits {
@@ -1198,8 +1455,89 @@ pub enum ImageViewCreateFlagBits {
     FragmentDensityMapDeferredBitExt = 0x00000002,
 }
 pub type ImageViewCreateFlags = Flags;
-
 pub type ShaderModuleCreateFlags = Flags;
+
+#[repr(i32)]
+pub enum ColorComponentFlagBits {
+    Red = 0x00000001,
+    Green = 0x00000002,
+    Blue = 0x00000004,
+    Alpha = 0x00000008,
+}
+type ColorComponentFlags = Flags;
+
+#[repr(i32)]
+pub enum PipeLineCreateFlagBits {
+    DisableOptimizationBit = 0x00000001,
+    AllowDerivativesBit = 0x00000002,
+    DerivativeBit = 0x00000004,
+    ViewIndexFromDeviceIndexBit = 0x00000008,
+    DispatchBaseBit = 0x00000010,
+    RayTracingNoNullAnyHitShadersBitKhr = 0x00004000,
+    RayTracingNoNullClosestHitShadersBitKhr = 0x00008000,
+    RayTracingNoNullMissShadersBitKhr = 0x00010000,
+    RayTracingNoNullIntersectionShadersBitKhr = 0x00020000,
+    RayTracingSkipTrianglesBitKhr = 0x00001000,
+    RayTracingSkipAabbsBitKhr = 0x00002000,
+    RayTracingShaderGroupHandleCaptureReplayBitKhr = 0x00080000,
+    DeferCompileBitNv = 0x00000020,
+    CaptureStatisticsBitKhr = 0x00000040,
+    CaptureInternalRepresentationsBitKhr = 0x00000080,
+    IndirectBindableBitNv = 0x00040000,
+    LibraryBitKhr = 0x00000800,
+    FailOnPipelineCompileRequiredBitExt = 0x00000100,
+    EarlyReturnOnFailureBitExt = 0x00000200,
+    RayTracingAllowMotionBitNv = 0x00100000,
+}
+pub type PipelineCreateFlags = Flags;
+
+#[repr(i32)]
+pub enum PipelineShaderStageCreateFlagBits {
+    AllowVaryingSubgroupSizeBitExt = 0x00000001,
+    RequireFullSubgroupsBitExt = 0x00000002,
+}
+pub type PipelineShaderStageCreateFlags = Flags;
+
+#[repr(i32)]
+pub enum ShaderStageFlagBits {
+    VertexBit = 0x00000001,
+    TessellationControlBit = 0x00000002,
+    TessellationEvaluationBit = 0x00000004,
+    GeometryBit = 0x00000008,
+    FragmentBit = 0x00000010,
+    ComputeBit = 0x00000020,
+    AllGraphics = 0x0000001F,
+    All = 0x7FFFFFFF,
+    RaygenBitKhr = 0x00000100,
+    AnyHitBitKhr = 0x00000200,
+    ClosestHitBitKhr = 0x00000400,
+    MissBitKhr = 0x00000800,
+    IntersectionBitKhr = 0x00001000,
+    CallableBitKhr = 0x00002000,
+    TaskBitNv = 0x00000040,
+    MeshBitNv = 0x00000080,
+    SubpassShadingBitHuawei = 0x00004000,
+}
+
+#[repr(i32)]
+pub enum CullModeFlagBits {
+    None = 0,
+    FrontBit = 0x00000001,
+    BackBit = 0x00000002,
+    FrontAndBack = 0x00000003,
+}
+type CullModeFlags = Flags;
+type PipelineVertexInputStateCreateFlags = Flags;
+type PipelineInputAssemblyStateCreateFlags = Flags;
+type PipelineTessellationStateCreateFlags = Flags;
+type PipelineViewportStateCreateFlags = Flags;
+type PipelineRasterizationStateCreateFlags = Flags;
+type PipelineMultisampleStateCreateFlags = Flags;
+type PipelineDepthStencilStateCreateFlags = Flags;
+type PipelineColorBlendStateCreateFlags = Flags;
+type PipelineDynamicStateCreateFlags = Flags;
+type PipelineLayoutCreateFlags = Flags;
+type ShaderStageFlags = Flags;
 
 #[repr(C)]
 pub struct SurfaceCapabilitiesKhr {
@@ -1297,4 +1635,224 @@ pub struct ShaderModuleCreateInfo {
     pub flags: ShaderModuleCreateFlags,
     pub code_size: usize,
     pub p_code: *const u32,
+}
+
+#[repr(C)]
+pub struct SpecializationMapEntry {
+    constant_id: u32,
+    offset: u32,
+    size: usize,
+}
+
+#[repr(C)]
+pub struct SpecializationInfo {
+    map_entry_count: u32,
+    p_map_entries: *const SpecializationMapEntry,
+    data_size: usize,
+    p_data: *const c_void,
+}
+
+#[repr(C)]
+pub struct PipelineShaderStageCreateInfo {
+    s_type: StructureType,
+    p_next: *const c_void,
+    flags: PipelineShaderStageCreateFlags,
+    stage: ShaderStageFlagBits,
+    #[cfg(target_pointer_width = "64")]
+    module: *mut OpaqueShaderModule,
+    #[cfg(not(target_pointer_width = "64"))]
+    module: u64,
+    p_name: *const i8,
+    p_specialization_info: *const SpecializationInfo,
+}
+
+#[repr(C)]
+pub struct VertexInputBindingDescription {
+    binding: u32,
+    stride: u32,
+    input_rate: VertexInputRate,
+}
+
+#[repr(C)]
+pub struct VertexInputAttributeDescription {
+    location: u32,
+    binding: u32,
+    format: Format,
+    offset: u32,
+}
+
+#[repr(C)]
+pub struct PipelineVertexInputStateCreateInfo {
+    s_type: StructureType,
+    p_next: *const c_void,
+    flags: PipelineVertexInputStateCreateFlags,
+    vertex_binding_description_count: u32,
+    p_vertex_binding_descriptions: *const VertexInputBindingDescription,
+    vertex_attribute_description_count: u32,
+    p_vertex_attribute_descriptions: *const VertexInputAttributeDescription,
+}
+
+#[repr(C)]
+pub struct PipelineInputAssemblyStateCreateInfo {
+    s_type: StructureType,
+    p_next: *const c_void,
+    flags: PipelineInputAssemblyStateCreateFlags,
+    topology: PrimitiveTopology,
+    primitive_restart_enable: Bool32,
+}
+
+#[repr(C)]
+pub struct PipelineTessellationStateCreateInfo {
+    s_type: StructureType,
+    p_next: *const c_void,
+    flags: PipelineTessellationStateCreateFlags,
+    patch_control_points: u32,
+}
+
+#[repr(C)]
+pub struct Viewport {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    min_depth: f32,
+    max_depth: f32,
+}
+
+#[repr(C)]
+pub struct PipelineViewportStateCreateInfo {
+    s_type: StructureType,
+    p_next: *const c_void,
+    flags: PipelineViewportStateCreateFlags,
+    viewport_count: u32,
+    p_viewports: *const Viewport,
+    scissor_count: u32,
+    p_scissors: *const Rect2D
+}
+
+#[repr(C)]
+pub struct PipelineRasterizationStateCreateInfo {
+    s_type: StructureType,
+    p_next: *const c_void,
+    flags: PipelineRasterizationStateCreateFlags,
+    depth_clamp_enable: Bool32,
+    rasterizer_discard_enable: Bool32,
+    polygon_mode: PolygonMode,
+    cull_mode: CullModeFlags,
+    front_face: FrontFace,
+    depth_bias_enable: Bool32,
+    depth_bias_constant_factor: f32,
+    depth_bias_clamp: f32,
+    depth_bias_slope_factor: f32,
+    line_width: f32,
+}
+
+#[repr(C)]
+pub struct PipelineMultisampleStateCreateInfo {
+    s_type: StructureType,
+    p_next: *const c_void,
+    flags: PipelineMultisampleStateCreateFlags,
+    rasterization_samples: SampleCountFlagBits,
+    sample_shading_enable: Bool32,
+    min_sample_shading: f32,
+    p_sample_mask: *const SampleMask,
+    alpha_to_coverage_enable: Bool32,
+    alpha_to_one_enable: Bool32,
+}
+
+#[repr(C)]
+pub struct StencilOpState {
+    fail_op: StencilOp,
+    pass_op: StencilOp,
+    depth_fail_op: StencilOp,
+    compare_op: CompareOp,
+    compare_mask: u32,
+    write_mask: u32,
+    reference: u32,
+}
+
+#[repr(C)]
+pub struct PipelineDepthStencilStateCreateInfo {
+    s_type: StructureType,
+    p_next: *const c_void,
+    flags: PipelineDepthStencilStateCreateFlags,
+    depth_test_enable: Bool32,
+    depth_write_enable: Bool32,
+    depth_compare_op: CompareOp,
+    depth_bounds_test_enable: Bool32,
+    stencil_test_enable: Bool32,
+    front: StencilOpState,
+    back: StencilOpState,
+    min_depth_bounds: f32,
+    max_depth_bounds: f32,
+}
+
+#[repr(C)]
+pub struct PipelineColorBlendAttachmentState {
+    blend_enable: Bool32,
+    src_color_blend_factor: BlendFactor,
+    dst_color_blend_factor: BlendFactor,
+    color_blend_op: BlendOp,
+    src_alpha_blend_factor: BlendFactor,
+    dst_alpha_blend_factor: BlendFactor,
+    alpha_blend_op: BlendOp,
+    color_write_mask: ColorComponentFlags,
+}
+
+#[repr(C)]
+pub struct PipelineColorBlendStateCreateInfo {
+    s_type: StructureType,
+    p_next: *const c_void,
+    flags: PipelineColorBlendStateCreateFlags,
+    logic_op_enable: Bool32,
+    logic_op: LogicOp,
+    attachment_count: u32,
+    p_attachments: *const PipelineColorBlendAttachmentState,
+    blend_constants: [f32; 4],
+}
+
+#[repr(C)]
+pub struct PipelineDynamicStateCreateInfo {
+    s_type: StructureType,
+    p_next: *const c_void,
+    flags: PipelineDynamicStateCreateFlags,
+    dynamic_state_count: u32,
+    p_dynamic_states: *const DynamicState,
+}
+
+#[repr(C)]
+pub struct GraphicsPipelineCreateInfo {
+    s_type: StructureType,
+    p_next: *const c_void,
+    flags: PipelineCreateFlags,
+    stage_count: u32,
+    p_stages: *const PipelineShaderStageCreateInfo,
+    p_vertex_input_state: *const PipelineVertexInputStateCreateInfo,
+    p_input_assembly_state: *const PipelineInputAssemblyStateCreateInfo,
+    p_tessellation_state: *const PipelineTessellationStateCreateInfo,
+    p_viewport_state: *const PipelineViewportStateCreateInfo,
+    p_rasterization_state: *const PipelineRasterizationStateCreateInfo,
+    p_multisample_state: *const PipelineMultisampleStateCreateInfo,
+    p_depth_stencil_state: *const PipelineDepthStencilStateCreateInfo,
+    p_color_blend_state: *const PipelineColorBlendStateCreateInfo,
+    p_dynamic_state: *const PipelineDynamicStateCreateInfo,
+
+    #[cfg(target_pointer_width = "64")]
+    layout: *mut OpaquePipelineLayout,
+    #[cfg(not(target_pointer_width = "64"))]
+    layout: u64,
+
+    #[cfg(target_pointer_width = "64")]
+    render_pass: *mut OpaqueRenderPass,
+    #[cfg(not(target_pointer_width = "64"))]
+    render_pass: u64,
+
+    subpass: u32,
+
+    #[cfg(target_pointer_width = "64")]
+    base_pipeline_handle: *mut OpaquePipeline,
+    #[cfg(not(target_pointer_width = "64"))]
+    base_pipeline_handle: u64,
+
+    base_pipeline_index: i32,
 }
