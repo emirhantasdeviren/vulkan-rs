@@ -1,4 +1,11 @@
+use crate::format::Format;
 use crate::shaders::ShaderModule;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VertexInputRate {
+    Vertex,
+    Instance,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShaderStage {
@@ -31,6 +38,31 @@ pub struct PipelineShaderStageCreateInfo<'a> {
     module: &'a ShaderModule<'a>,
     name: &'a str,
     specialization_info: Option<()>, // TODO: SpecializationInfo
+}
+
+#[derive(Default)]
+pub struct PipelineVertexInputStateCreateFlags(u32);
+
+#[derive(Debug)]
+pub struct VertexInputBindingDescription {
+    binding: u32,
+    stride: u32,
+    input_rate: VertexInputRate,
+}
+
+#[derive(Debug)]
+pub struct VertexInputAttributeDescription {
+    location: u32,
+    binding: u32,
+    format: Format,
+    offset: u32,
+}
+
+#[derive(Debug, Default)]
+pub struct PipelineVertexInputStateCreateInfo<'a> {
+    flags: PipelineVertexInputStateCreateFlags,
+    vertex_binding_descriptions: Option<&'a [VertexInputBindingDescription]>,
+    vertex_attribute_descriptions: Option<&'a [VertexInputAttributeDescription]>,
 }
 
 impl Default for ShaderStage {
@@ -77,5 +109,33 @@ impl<'a> PipelineShaderStageCreateInfo<'a> {
 
     fn _with_specialization_info(self, _specialization_info: Option<()>) -> Self {
         todo!()
+    }
+}
+
+impl std::fmt::Debug for PipelineVertexInputStateCreateFlags {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0 == 0 {
+            f.write_str("()")
+        } else {
+            f.write_str("non-empty")
+        }
+    }
+}
+
+impl<'a> PipelineVertexInputStateCreateInfo<'a> {
+    pub fn with_vertex_binding_descriptions(
+        mut self,
+        vertex_binding_descriptions: &'a [VertexInputBindingDescription],
+    ) -> Self {
+        self.vertex_binding_descriptions = Some(vertex_binding_descriptions);
+        self
+    }
+
+    pub fn with_vertex_attribute_descriptions(
+        mut self,
+        vertex_attribute_descriptions: &'a [VertexInputAttributeDescription],
+    ) -> Self {
+        self.vertex_attribute_descriptions = Some(vertex_attribute_descriptions);
+        self
     }
 }
