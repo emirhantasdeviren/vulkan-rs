@@ -2,7 +2,8 @@ use vulkan_rs::device::PhysicalDeviceType;
 use vulkan_rs::format::Format;
 use vulkan_rs::init::{ApiVersion, ApplicationInfo, Instance};
 use vulkan_rs::pipeline::{
-    PipelineShaderStageCreateInfo, PipelineVertexInputStateCreateInfo, ShaderStage,
+    PipelineInputAssemblyStateCreateInfo, PipelineShaderStageCreateInfo,
+    PipelineVertexInputStateCreateInfo, PrimitiveTopology, ShaderStage,
 };
 use vulkan_rs::resource::{
     ImageAspectFlagsBuilder, ImageSubresourceRange, ImageUsageFlagsBuilder, ImageViewBuilder,
@@ -147,7 +148,9 @@ fn main() {
 
     let shader_stages = [vert_shader_stage, frag_shader_stage];
     let vertex_input_info = PipelineVertexInputStateCreateInfo::default();
-    dbg!(vertex_input_info);
+    let input_assembly =
+        PipelineInputAssemblyStateCreateInfo::new().with_topology(PrimitiveTopology::TriangleList);
+    dbg!(input_assembly);
 
     event_loop.run_return(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;

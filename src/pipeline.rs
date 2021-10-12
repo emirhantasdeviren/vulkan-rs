@@ -1,3 +1,7 @@
+#![warn(missing_debug_implementations)]
+
+use std::fmt;
+
 use crate::format::Format;
 use crate::shaders::ShaderModule;
 
@@ -5,6 +9,22 @@ use crate::shaders::ShaderModule;
 pub enum VertexInputRate {
     Vertex,
     Instance,
+}
+
+/// Primitive topology describes how consecutive vertices are organized into primitives.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PrimitiveTopology {
+    PointList,
+    LineList,
+    LineStrip,
+    TriangleList,
+    TriangleStrip,
+    TriangleFan,
+    LineListWithAdjacency,
+    LineStripWithAdjacency,
+    TriangleListWithAdjacency,
+    TriangleStripWithAdjacency,
+    PatchList,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,6 +62,8 @@ pub struct PipelineShaderStageCreateInfo<'a> {
 
 #[derive(Default)]
 pub struct PipelineVertexInputStateCreateFlags(u32);
+#[derive(Default)]
+pub struct PipelineInputAssemblyStateCreateFlags(u32);
 
 #[derive(Debug)]
 pub struct VertexInputBindingDescription {
@@ -65,14 +87,28 @@ pub struct PipelineVertexInputStateCreateInfo<'a> {
     vertex_attribute_descriptions: Option<&'a [VertexInputAttributeDescription]>,
 }
 
+/// Description of assembly of primitives
+#[derive(Debug)]
+pub struct PipelineInputAssemblyStateCreateInfo {
+    flags: PipelineInputAssemblyStateCreateFlags,
+    topology: PrimitiveTopology,
+    primitive_restart_enable: bool,
+}
+
+impl Default for PrimitiveTopology {
+    fn default() -> Self {
+        Self::PointList
+    }
+}
+
 impl Default for ShaderStage {
     fn default() -> Self {
         Self::Vertex
     }
 }
 
-impl std::fmt::Debug for PipelineShaderStageCreateFlags {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for PipelineShaderStageCreateFlags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.0 == 0 {
             f.write_str("()")
         } else {
@@ -112,8 +148,18 @@ impl<'a> PipelineShaderStageCreateInfo<'a> {
     }
 }
 
-impl std::fmt::Debug for PipelineVertexInputStateCreateFlags {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for PipelineVertexInputStateCreateFlags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0 == 0 {
+            f.write_str("()")
+        } else {
+            f.write_str("non-empty")
+        }
+    }
+}
+
+impl fmt::Debug for PipelineInputAssemblyStateCreateFlags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.0 == 0 {
             f.write_str("()")
         } else {
@@ -137,5 +183,31 @@ impl<'a> PipelineVertexInputStateCreateInfo<'a> {
     ) -> Self {
         self.vertex_attribute_descriptions = Some(vertex_attribute_descriptions);
         self
+    }
+}
+
+impl PipelineInputAssemblyStateCreateInfo {
+    pub fn new() -> Self {
+        Self {
+            flags: Default::default(),
+            topology: Default::default(),
+            primitive_restart_enable: Default::default(),
+        }
+    }
+
+    pub fn with_topology(mut self, topology: PrimitiveTopology) -> Self {
+        self.topology = topology;
+        self
+    }
+
+    pub fn with_primitive_restart_enable(mut self, primitive_restart_enable: bool) -> Self {
+        self.primitive_restart_enable = primitive_restart_enable;
+        self
+    }
+}
+
+impl Default for PipelineInputAssemblyStateCreateInfo {
+    fn default() -> Self {
+        Self::new()
     }
 }
