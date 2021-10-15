@@ -239,8 +239,8 @@ pub struct Extent3D {
 
 #[repr(C)]
 pub struct Offset2D {
-    x: i32,
-    y: i32,
+    pub x: i32,
+    pub y: i32,
 }
 
 #[repr(C)]
@@ -252,8 +252,8 @@ pub struct Offset3D {
 
 #[repr(C)]
 pub struct Rect2D {
-    offset: Offset2D,
-    extent: Extent2D,
+    pub offset: Offset2D,
+    pub extent: Extent2D,
 }
 
 #[repr(C)]

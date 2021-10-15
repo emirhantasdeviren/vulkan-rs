@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use crate::core::Rect2D;
 use crate::format::Format;
 use crate::shaders::ShaderModule;
 
@@ -64,6 +65,8 @@ pub struct PipelineShaderStageCreateInfo<'a> {
 pub struct PipelineVertexInputStateCreateFlags(u32);
 #[derive(Default)]
 pub struct PipelineInputAssemblyStateCreateFlags(u32);
+#[derive(Default)]
+pub struct PipelineViewportStateCreateFlags(u32);
 
 #[derive(Debug)]
 pub struct VertexInputBindingDescription {
@@ -93,6 +96,24 @@ pub struct PipelineInputAssemblyStateCreateInfo {
     flags: PipelineInputAssemblyStateCreateFlags,
     topology: PrimitiveTopology,
     primitive_restart_enable: bool,
+}
+
+/// A polygon viewing region
+#[derive(Debug, Default)]
+pub struct Viewport {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    min_depth: f32,
+    max_depth: f32,
+}
+
+#[derive(Debug)]
+pub struct PipelineViewportStateCreateInfo<'a> {
+    flags: PipelineViewportStateCreateFlags,
+    viewports: Option<&'a [Viewport]>,
+    scissors: Option<&'a [Rect2D]>,
 }
 
 impl Default for PrimitiveTopology {
@@ -168,6 +189,16 @@ impl fmt::Debug for PipelineInputAssemblyStateCreateFlags {
     }
 }
 
+impl fmt::Debug for PipelineViewportStateCreateFlags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0 == 0 {
+            f.write_str("()")
+        } else {
+            f.write_str("non-empty")
+        }
+    }
+}
+
 impl<'a> PipelineVertexInputStateCreateInfo<'a> {
     pub fn with_vertex_binding_descriptions(
         mut self,
@@ -207,6 +238,45 @@ impl PipelineInputAssemblyStateCreateInfo {
 }
 
 impl Default for PipelineInputAssemblyStateCreateInfo {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Viewport {
+    pub fn new(x: f32, y: f32, width: f32, height: f32, min_depth: f32, max_depth: f32) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+            min_depth,
+            max_depth,
+        }
+    }
+}
+
+impl<'a> PipelineViewportStateCreateInfo<'a> {
+    pub fn new() -> Self {
+        Self {
+            flags: Default::default(),
+            viewports: Default::default(),
+            scissors: Default::default(),
+        }
+    }
+
+    pub fn with_viewports(mut self, viewports: &'a [Viewport]) -> Self {
+        self.viewports = Some(viewports);
+        self
+    }
+
+    pub fn with_scissors(mut self, scissors: &'a [Rect2D]) -> Self {
+        self.scissors = Some(scissors);
+        self
+    }
+}
+
+impl Default for PipelineViewportStateCreateInfo<'_> {
     fn default() -> Self {
         Self::new()
     }

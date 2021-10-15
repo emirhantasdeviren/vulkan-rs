@@ -1,9 +1,11 @@
+use vulkan_rs::core::Rect2D;
 use vulkan_rs::device::PhysicalDeviceType;
 use vulkan_rs::format::Format;
 use vulkan_rs::init::{ApiVersion, ApplicationInfo, Instance};
 use vulkan_rs::pipeline::{
     PipelineInputAssemblyStateCreateInfo, PipelineShaderStageCreateInfo,
-    PipelineVertexInputStateCreateInfo, PrimitiveTopology, ShaderStage,
+    PipelineVertexInputStateCreateInfo, PipelineViewportStateCreateInfo, PrimitiveTopology,
+    ShaderStage, Viewport,
 };
 use vulkan_rs::resource::{
     ImageAspectFlagsBuilder, ImageSubresourceRange, ImageUsageFlagsBuilder, ImageViewBuilder,
@@ -146,13 +148,25 @@ fn main() {
     let frag_shader_stage =
         PipelineShaderStageCreateInfo::new(&frag_module).with_stage(ShaderStage::Fragment);
 
-    let shader_stages = [vert_shader_stage, frag_shader_stage];
-    let vertex_input_info = PipelineVertexInputStateCreateInfo::default();
-    let input_assembly =
+    let _shader_stages = [vert_shader_stage, frag_shader_stage];
+    let _vertex_input_info = PipelineVertexInputStateCreateInfo::default();
+    let _input_assembly =
         PipelineInputAssemblyStateCreateInfo::new().with_topology(PrimitiveTopology::TriangleList);
-    dbg!(input_assembly);
 
-    event_loop.run_return(move |event, _, control_flow| {
+    let viewport = Viewport::new(
+        0f32,
+        0f32,
+        surface_capabilities.current_extent.width() as f32,
+        surface_capabilities.current_extent.height() as f32,
+        0f32,
+        1f32,
+    );
+    let scissor = Rect2D::new((0, 0).into(), surface_capabilities.current_extent);
+    let _viewport_state = PipelineViewportStateCreateInfo::new()
+        .with_viewports(std::array::from_ref(&viewport))
+        .with_scissors(std::array::from_ref(&scissor));
+
+    event_loop.run_return(|event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
 
         match event {
