@@ -7,6 +7,12 @@ use crate::format::Format;
 use crate::shaders::ShaderModule;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrontFace {
+    CounterClockwise,
+    Clockwise,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VertexInputRate {
     Vertex,
     Instance,
@@ -26,6 +32,14 @@ pub enum PrimitiveTopology {
     TriangleListWithAdjacency,
     TriangleStripWithAdjacency,
     PatchList,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PolygonMode {
+    Fill,
+    Line,
+    Point,
+    FillRectangleNv,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,6 +63,14 @@ pub enum ShaderStage {
     SubpassShadingHuawei,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CullMode {
+    None,
+    Front,
+    Back,
+    FrondAndBack,
+}
+
 #[derive(Default)]
 pub struct PipelineShaderStageCreateFlags(u32);
 
@@ -67,6 +89,8 @@ pub struct PipelineVertexInputStateCreateFlags(u32);
 pub struct PipelineInputAssemblyStateCreateFlags(u32);
 #[derive(Default)]
 pub struct PipelineViewportStateCreateFlags(u32);
+#[derive(Default)]
+pub struct PipelineRasterizationStateCreateFlags(u32);
 
 #[derive(Debug)]
 pub struct VertexInputBindingDescription {
@@ -116,15 +140,48 @@ pub struct PipelineViewportStateCreateInfo<'a> {
     scissors: Option<&'a [Rect2D]>,
 }
 
+#[derive(Debug, Default)]
+pub struct PipelineRasterizationStateCreateInfo {
+    flags: PipelineRasterizationStateCreateFlags,
+    depth_clamp_enable: bool,
+    rasterizer_discard_enable: bool,
+    polygon_mode: PolygonMode,
+    cull_mode: CullMode,
+    front_face: FrontFace,
+    depth_bias_enable: bool,
+    depth_bias_constant_factor: f32,
+    depth_bias_clamp: f32,
+    depth_bias_slope_factor: f32,
+    line_width: f32,
+}
+
+impl Default for FrontFace {
+    fn default() -> Self {
+        Self::CounterClockwise
+    }
+}
+
 impl Default for PrimitiveTopology {
     fn default() -> Self {
         Self::PointList
     }
 }
 
+impl Default for PolygonMode {
+    fn default() -> Self {
+        Self::Fill
+    }
+}
+
 impl Default for ShaderStage {
     fn default() -> Self {
         Self::Vertex
+    }
+}
+
+impl Default for CullMode {
+    fn default() -> Self {
+        Self::None
     }
 }
 
@@ -190,6 +247,16 @@ impl fmt::Debug for PipelineInputAssemblyStateCreateFlags {
 }
 
 impl fmt::Debug for PipelineViewportStateCreateFlags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0 == 0 {
+            f.write_str("()")
+        } else {
+            f.write_str("non-empty")
+        }
+    }
+}
+
+impl fmt::Debug for PipelineRasterizationStateCreateFlags {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.0 == 0 {
             f.write_str("()")
@@ -279,5 +346,61 @@ impl<'a> PipelineViewportStateCreateInfo<'a> {
 impl Default for PipelineViewportStateCreateInfo<'_> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl PipelineRasterizationStateCreateInfo {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with_depth_clamp_enable(mut self, depth_clamp_enable: bool) -> Self {
+        self.depth_clamp_enable = depth_clamp_enable;
+        self
+    }
+
+    pub fn with_rasterizer_discard_enable(mut self, rasterizer_discard_enable: bool) -> Self {
+        self.rasterizer_discard_enable = rasterizer_discard_enable;
+        self
+    }
+
+    pub fn with_polygon_mode(mut self, polygon_mode: PolygonMode) -> Self {
+        self.polygon_mode = polygon_mode;
+        self
+    }
+
+    pub fn with_cull_mode(mut self, cull_mode: CullMode) -> Self {
+        self.cull_mode = cull_mode;
+        self
+    }
+
+    pub fn with_front_face(mut self, front_face: FrontFace) -> Self {
+        self.front_face = front_face;
+        self
+    }
+
+    pub fn with_depth_bias_enable(mut self, depth_bias_enable: bool) -> Self {
+        self.depth_bias_enable = depth_bias_enable;
+        self
+    }
+
+    pub fn with_depth_bias_constant_factor(mut self, depth_bias_constant_factor: f32) -> Self {
+        self.depth_bias_constant_factor = depth_bias_constant_factor;
+        self
+    }
+
+    pub fn with_depth_bias_clamp(mut self, depth_bias_clamp: f32) -> Self {
+        self.depth_bias_clamp = depth_bias_clamp;
+        self
+    }
+
+    pub fn with_depth_bias_slope_factor(mut self, depth_bias_slope_factor: f32) -> Self {
+        self.depth_bias_slope_factor = depth_bias_slope_factor;
+        self
+    }
+
+    pub fn with_line_width(mut self, line_width: f32) -> Self {
+        self.line_width = line_width;
+        self
     }
 }

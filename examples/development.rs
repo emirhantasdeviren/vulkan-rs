@@ -3,7 +3,8 @@ use vulkan_rs::device::PhysicalDeviceType;
 use vulkan_rs::format::Format;
 use vulkan_rs::init::{ApiVersion, ApplicationInfo, Instance};
 use vulkan_rs::pipeline::{
-    PipelineInputAssemblyStateCreateInfo, PipelineShaderStageCreateInfo,
+    CullMode, FrontFace, PipelineInputAssemblyStateCreateInfo,
+    PipelineRasterizationStateCreateInfo, PipelineShaderStageCreateInfo,
     PipelineVertexInputStateCreateInfo, PipelineViewportStateCreateInfo, PrimitiveTopology,
     ShaderStage, Viewport,
 };
@@ -165,6 +166,11 @@ fn main() {
     let _viewport_state = PipelineViewportStateCreateInfo::new()
         .with_viewports(std::array::from_ref(&viewport))
         .with_scissors(std::array::from_ref(&scissor));
+    let rasterizer = PipelineRasterizationStateCreateInfo::new()
+        .with_line_width(1f32)
+        .with_cull_mode(CullMode::Back)
+        .with_front_face(FrontFace::Clockwise);
+    dbg!(rasterizer);
 
     event_loop.run_return(|event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
