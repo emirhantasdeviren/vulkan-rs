@@ -3,8 +3,11 @@
 use std::fmt;
 
 use crate::core::Rect2D;
+use crate::ffi;
 use crate::format::Format;
 use crate::shaders::ShaderModule;
+
+pub type SampleMask = u32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrontFace {
@@ -71,6 +74,105 @@ pub enum CullMode {
     FrondAndBack,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SampleCount {
+    OneBit,
+    TwoBit,
+    FourBit,
+    EightBit,
+    SixteenBit,
+    ThirtytwoBit,
+    SixtyfourBit,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BlendFactor {
+    Zero,
+    One,
+    SrcColor,
+    OneMinusSrcColor,
+    DstColor,
+    OneMinusDstColor,
+    SrcAlpha,
+    OneMinusSrcAlpha,
+    DstAlpha,
+    OneMinusDstAlpha,
+    ConstantColor,
+    OneMinusConstantColor,
+    ConstantAlpha,
+    OneMinusConstantAlpha,
+    SrcAlphaSaturate,
+    Src1Color,
+    OneMinusSrc1Color,
+    Src1Alpha,
+    OneMinusSrc1Alpha,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BlendOp {
+    Add,
+    Subtract,
+    ReverseSubtract,
+    Min,
+    Max,
+    ZeroExt,
+    SrcExt,
+    DstExt,
+    SrcOverExt,
+    DstOverExt,
+    SrcInExt,
+    DstInExt,
+    SrcOutExt,
+    DstOutExt,
+    SrcAtopExt,
+    DstAtopExt,
+    XorExt,
+    MultiplyExt,
+    ScreenExt,
+    OverlayExt,
+    DarkenExt,
+    LightenExt,
+    ColordodgeExt,
+    ColorburnExt,
+    HardlightExt,
+    SoftlightExt,
+    DifferenceExt,
+    ExclusionExt,
+    InvertExt,
+    InvertRgbExt,
+    LineardodgeExt,
+    LinearburnExt,
+    VividlightExt,
+    LinearlightExt,
+    PinlightExt,
+    HardmixExt,
+    HslHueExt,
+    HslSaturationExt,
+    HslColorExt,
+    HslLuminosityExt,
+    PlusExt,
+    PlusClampedExt,
+    PlusClampedAlphaExt,
+    PlusDarkerExt,
+    MinusExt,
+    MinusClampedExt,
+    ContrastExt,
+    InvertOvgExt,
+    RedExt,
+    GreenExt,
+    BlueExt,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ColorComponent {
+    Red,
+    Green,
+    Blue,
+    Alpha,
+}
+#[derive(Default)]
+pub struct ColorComponentFlags(u32);
+
 #[derive(Default)]
 pub struct PipelineShaderStageCreateFlags(u32);
 
@@ -91,6 +193,10 @@ pub struct PipelineInputAssemblyStateCreateFlags(u32);
 pub struct PipelineViewportStateCreateFlags(u32);
 #[derive(Default)]
 pub struct PipelineRasterizationStateCreateFlags(u32);
+#[derive(Default)]
+pub struct PipelineMultisampleStateCreateFlags(u32);
+#[derive(Default)]
+pub struct PipelineColorBlendStateCreateFlags(u32);
 
 #[derive(Debug)]
 pub struct VertexInputBindingDescription {
@@ -155,6 +261,28 @@ pub struct PipelineRasterizationStateCreateInfo {
     line_width: f32,
 }
 
+#[derive(Debug, Default)]
+pub struct PipelineMultisampleStateCreateInfo<'a> {
+    flags: PipelineMultisampleStateCreateFlags,
+    rasterization_samples: SampleCount,
+    min_sample_mask: Option<f32>,
+    sample_mask: &'a [SampleMask],
+    alpha_to_coverage_enable: bool,
+    alpha_to_one_enable: bool,
+}
+
+#[derive(Debug, Default)]
+pub struct PipelineColorBlendAttachmentState {
+    blend_enable: bool,
+    src_color_blend_factor: BlendFactor,
+    dst_color_blend_factor: BlendFactor,
+    color_blend_op: BlendOp,
+    src_alpha_blend_factor: BlendFactor,
+    dst_alpha_blend_factor: BlendFactor,
+    alpha_blend_op: BlendOp,
+    color_write_mask: ColorComponentFlags,
+}
+
 impl Default for FrontFace {
     fn default() -> Self {
         Self::CounterClockwise
@@ -182,6 +310,107 @@ impl Default for ShaderStage {
 impl Default for CullMode {
     fn default() -> Self {
         Self::None
+    }
+}
+
+impl Default for SampleCount {
+    fn default() -> Self {
+        Self::OneBit
+    }
+}
+
+impl Default for BlendFactor {
+    fn default() -> Self {
+        Self::Zero
+    }
+}
+
+impl Default for BlendOp {
+    fn default() -> Self {
+        Self::Add
+    }
+}
+
+impl ColorComponentFlags {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with_red(mut self, red: bool) -> Self {
+        if red {
+            self.0 |= ffi::ColorComponentFlagBits::Red as u32;
+        } else {
+            self.0 &= !(ffi::ColorComponentFlagBits::Red as u32);
+        }
+        self
+    }
+
+    pub fn with_green(mut self, green: bool) -> Self {
+        if green {
+            self.0 |= ffi::ColorComponentFlagBits::Green as u32;
+        } else {
+            self.0 &= !(ffi::ColorComponentFlagBits::Green as u32);
+        }
+        self
+    }
+
+    pub fn with_blue(mut self, blue: bool) -> Self {
+        if blue {
+            self.0 |= ffi::ColorComponentFlagBits::Blue as u32;
+        } else {
+            self.0 &= !(ffi::ColorComponentFlagBits::Blue as u32);
+        }
+        self
+    }
+
+    pub fn with_alpha(mut self, alpha: bool) -> Self {
+        if alpha {
+            self.0 |= ffi::ColorComponentFlagBits::Alpha as u32;
+        } else {
+            self.0 &= !(ffi::ColorComponentFlagBits::Alpha as u32);
+        }
+        self
+    }
+}
+
+impl fmt::Debug for ColorComponentFlags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0 == 0 {
+            f.write_str("()")
+        } else {
+            let mut first = true;
+
+            if self.0 & ffi::ColorComponentFlagBits::Red as u32 != 0 {
+                if first {
+                    first = false;
+                }
+                f.write_str("RED")?;
+            }
+            if self.0 & ffi::ColorComponentFlagBits::Blue as u32 != 0 {
+                if first {
+                    first = false;
+                } else {
+                    f.write_str(" | ")?;
+                }
+                f.write_str("BLUE")?;
+            }
+            if self.0 & ffi::ColorComponentFlagBits::Green as u32 != 0 {
+                if first {
+                    first = false;
+                } else {
+                    f.write_str(" | ")?;
+                }
+                f.write_str("GREEN")?;
+            }
+            if self.0 & ffi::ColorComponentFlagBits::Alpha as u32 != 0 {
+                if !first {
+                    f.write_str(" | ")?;
+                }
+                f.write_str("ALPHA")?;
+            }
+
+            Ok(())
+        }
     }
 }
 
@@ -263,6 +492,18 @@ impl fmt::Debug for PipelineRasterizationStateCreateFlags {
         } else {
             f.write_str("non-empty")
         }
+    }
+}
+
+impl fmt::Debug for PipelineMultisampleStateCreateFlags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("()")
+    }
+}
+
+impl fmt::Debug for PipelineColorBlendStateCreateFlags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("()")
     }
 }
 
@@ -401,6 +642,83 @@ impl PipelineRasterizationStateCreateInfo {
 
     pub fn with_line_width(mut self, line_width: f32) -> Self {
         self.line_width = line_width;
+        self
+    }
+}
+
+impl<'a> PipelineMultisampleStateCreateInfo<'a> {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with_rasterization_samples(mut self, rasterization_samples: SampleCount) -> Self {
+        self.rasterization_samples = rasterization_samples;
+        self
+    }
+
+    pub fn with_min_sample_mask(mut self, min_sample_mask: f32) -> Self {
+        self.min_sample_mask = Some(min_sample_mask);
+        self
+    }
+
+    pub fn with_sample_mask(mut self, sample_mask: &'a [SampleMask]) -> Self {
+        self.sample_mask = sample_mask;
+        self
+    }
+
+    pub fn with_alpha_to_coverage_enable(mut self, alpha_to_coverage_enable: bool) -> Self {
+        self.alpha_to_coverage_enable = alpha_to_coverage_enable;
+        self
+    }
+
+    pub fn with_alpha_to_one_enable(mut self, alpha_to_one_enable: bool) -> Self {
+        self.alpha_to_one_enable = alpha_to_one_enable;
+        self
+    }
+}
+
+impl PipelineColorBlendAttachmentState {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with_blend_enable(mut self, blend_enable: bool) -> Self {
+        self.blend_enable = blend_enable;
+        self
+    }
+
+    pub fn with_src_color_blend_factor(mut self, src_color_blend_factor: BlendFactor) -> Self {
+        self.src_color_blend_factor = src_color_blend_factor;
+        self
+    }
+
+    pub fn with_dst_color_blend_factor(mut self, dst_color_blend_factor: BlendFactor) -> Self {
+        self.dst_color_blend_factor = dst_color_blend_factor;
+        self
+    }
+
+    pub fn with_color_blend_op(mut self, color_blend_op: BlendOp) -> Self {
+        self.color_blend_op = color_blend_op;
+        self
+    }
+
+    pub fn with_src_alpha_blend_factor(mut self, src_alpha_blend_factor: BlendFactor) -> Self {
+        self.src_alpha_blend_factor = src_alpha_blend_factor;
+        self
+    }
+
+    pub fn with_dst_alpha_blend_factor(mut self, dst_alpha_blend_factor: BlendFactor) -> Self {
+        self.dst_alpha_blend_factor = dst_alpha_blend_factor;
+        self
+    }
+
+    pub fn with_alpha_blend_op(mut self, alpha_blend_op: BlendOp) -> Self {
+        self.alpha_blend_op = alpha_blend_op;
+        self
+    }
+
+    pub fn with_color_write_mask(mut self, color_write_mask: ColorComponentFlags) -> Self {
+        self.color_write_mask = color_write_mask;
         self
     }
 }

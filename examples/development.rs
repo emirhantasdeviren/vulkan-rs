@@ -3,10 +3,11 @@ use vulkan_rs::device::PhysicalDeviceType;
 use vulkan_rs::format::Format;
 use vulkan_rs::init::{ApiVersion, ApplicationInfo, Instance};
 use vulkan_rs::pipeline::{
-    CullMode, FrontFace, PipelineInputAssemblyStateCreateInfo,
-    PipelineRasterizationStateCreateInfo, PipelineShaderStageCreateInfo,
-    PipelineVertexInputStateCreateInfo, PipelineViewportStateCreateInfo, PrimitiveTopology,
-    ShaderStage, Viewport,
+    ColorComponentFlags, CullMode, FrontFace,
+    PipelineColorBlendAttachmentState, PipelineInputAssemblyStateCreateInfo,
+    PipelineMultisampleStateCreateInfo, PipelineRasterizationStateCreateInfo,
+    PipelineShaderStageCreateInfo, PipelineVertexInputStateCreateInfo,
+    PipelineViewportStateCreateInfo, PrimitiveTopology, ShaderStage, Viewport,
 };
 use vulkan_rs::resource::{
     ImageAspectFlagsBuilder, ImageSubresourceRange, ImageUsageFlagsBuilder, ImageViewBuilder,
@@ -166,11 +167,19 @@ fn main() {
     let _viewport_state = PipelineViewportStateCreateInfo::new()
         .with_viewports(std::array::from_ref(&viewport))
         .with_scissors(std::array::from_ref(&scissor));
-    let rasterizer = PipelineRasterizationStateCreateInfo::new()
+    let _rasterizer = PipelineRasterizationStateCreateInfo::new()
         .with_line_width(1f32)
         .with_cull_mode(CullMode::Back)
         .with_front_face(FrontFace::Clockwise);
-    dbg!(rasterizer);
+    let _multisampling = PipelineMultisampleStateCreateInfo::new();
+    let color_blend_attachment = PipelineColorBlendAttachmentState::new().with_color_write_mask(
+        ColorComponentFlags::new()
+            .with_red(true)
+            .with_green(true)
+            .with_blue(true)
+            .with_alpha(true),
+    );
+    dbg!(color_blend_attachment);
 
     event_loop.run_return(|event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
