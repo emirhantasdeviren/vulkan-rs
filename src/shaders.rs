@@ -8,12 +8,12 @@ use crate::ffi;
 
 pub struct ShaderModule<'a> {
     #[cfg(target_pointer_width = "64")]
-    pub(crate) handle: NonNull<ffi::OpaqueShaderModule>,
+    pub(crate) handle: NonNull<ffi::VkShaderModule_T>,
     #[cfg(not(target_pointer_width = "64"))]
     pub(crate) handle: NonZeroU64,
     pub(crate) device: &'a Device<'a>,
     #[cfg(target_pointer_width = "64")]
-    pub(crate) _marker: PhantomData<ffi::OpaqueShaderModule>,
+    pub(crate) _marker: PhantomData<ffi::VkShaderModule_T>,
 }
 
 impl<'a> Drop for ShaderModule<'a> {

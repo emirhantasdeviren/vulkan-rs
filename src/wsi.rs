@@ -35,22 +35,22 @@ pub const KHR_WIN32_SURFACE_EXTENSION_NAME: &str = "VK_KHR_win32_surface";
 
 pub struct SurfaceKhr<'a> {
     #[cfg(target_pointer_width = "64")]
-    pub(crate) handle: NonNull<ffi::OpaqueSurfaceKhr>,
+    pub(crate) handle: NonNull<ffi::VkSurfaceKhr_T>,
     #[cfg(not(target_pointer_width = "64"))]
     pub(crate) handle: NonZeroU64,
     pub(crate) instance: &'a Instance,
     #[cfg(target_pointer_width = "64")]
-    pub(crate) _marker: PhantomData<ffi::OpaqueSurfaceKhr>,
+    pub(crate) _marker: PhantomData<ffi::VkSurfaceKhr_T>,
 }
 
 pub struct SwapchainKhr<'a> {
     #[cfg(target_pointer_width = "64")]
-    pub(crate) handle: NonNull<ffi::OpaqueSwapchainKhr>,
+    pub(crate) handle: NonNull<ffi::VkSwapchainKhr_T>,
     #[cfg(not(target_pointer_width = "64"))]
     pub(crate) handle: NonZeroU64,
     device: &'a Device<'a>,
     #[cfg(target_pointer_width = "64")]
-    _marker: PhantomData<ffi::OpaqueSwapchainKhr>,
+    _marker: PhantomData<ffi::VkSwapchainKhr_T>,
 }
 
 pub struct SwapchainBuilderKhr<'a, 'b> {

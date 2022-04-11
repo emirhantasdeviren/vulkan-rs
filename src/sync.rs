@@ -9,12 +9,12 @@ use crate::ffi;
 
 pub struct Semaphore<'a> {
     #[cfg(target_pointer_width = "64")]
-    pub(crate) handle: NonNull<ffi::OpaqueSemaphore>,
+    pub(crate) handle: NonNull<ffi::VkSemaphore_T>,
     #[cfg(not(target_pointer_width = "64"))]
     pub(crate) handle: NonZeroU64,
     pub(crate) device: &'a Device<'a>,
     #[cfg(target_pointer_width = "64")]
-    pub(crate) _marker: PhantomData<ffi::OpaqueSemaphore>,
+    pub(crate) _marker: PhantomData<ffi::VkSemaphore_T>,
 }
 
 impl<'a> Drop for Semaphore<'a> {

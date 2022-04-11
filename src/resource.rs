@@ -9,22 +9,22 @@ use crate::format::Format;
 
 pub struct Image<'a> {
     #[cfg(target_pointer_width = "64")]
-    pub(crate) handle: NonNull<ffi::OpaqueImage>,
+    pub(crate) handle: NonNull<ffi::VkImage_T>,
     #[cfg(not(target_pointer_width = "64"))]
     pub(crate) handle: NonZeroU64,
     pub(crate) device: &'a Device<'a>,
     #[cfg(target_pointer_width = "64")]
-    pub(crate) _marker: PhantomData<ffi::OpaqueImage>,
+    pub(crate) _marker: PhantomData<ffi::VkImage_T>,
 }
 
 pub struct ImageView<'a> {
     #[cfg(target_pointer_width = "64")]
-    handle: NonNull<ffi::OpaqueImageView>,
+    handle: NonNull<ffi::VkImageView_T>,
     #[cfg(not(target_pointer_width = "64"))]
     handle: NonZeroU64,
     device: &'a Device<'a>,
     #[cfg(target_pointer_width = "64")]
-    _marker: PhantomData<ffi::OpaqueImageView>,
+    _marker: PhantomData<ffi::VkImageView_T>,
 }
 
 pub struct ImageViewBuilder<'a> {

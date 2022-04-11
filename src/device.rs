@@ -16,21 +16,21 @@ use crate::wsi::{
 };
 
 pub struct PhysicalDevice<'a> {
-    pub(crate) handle: NonNull<ffi::OpaquePhysicalDevice>,
+    pub(crate) handle: NonNull<ffi::VkPhysicalDevice_T>,
     pub(crate) dispatch_loader: DispatchLoaderPhysicalDevice,
-    pub(crate) _marker: PhantomData<(ffi::OpaquePhysicalDevice, &'a Instance)>,
+    pub(crate) _marker: PhantomData<(ffi::VkPhysicalDevice_T, &'a Instance)>,
 }
 
 pub struct Device<'a> {
-    pub(super) handle: NonNull<ffi::OpaqueDevice>,
+    pub(super) handle: NonNull<ffi::VkDevice_T>,
     pub(super) dispatch_loader: DispatchLoaderDevice,
-    _marker: PhantomData<(ffi::OpaqueDevice, &'a Instance)>,
+    _marker: PhantomData<(ffi::VkDevice_T, &'a Instance)>,
 }
 
 #[derive(Debug)]
 pub struct Queue<'a> {
-    handle: NonNull<ffi::OpaqueQueue>,
-    _marker: PhantomData<(ffi::OpaqueQueue, &'a Device<'a>)>,
+    handle: NonNull<ffi::VkQueue_T>,
+    _marker: PhantomData<(ffi::VkQueue_T, &'a Device<'a>)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

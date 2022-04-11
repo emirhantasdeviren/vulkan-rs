@@ -12,10 +12,10 @@ use crate::wsi::SurfaceKhr;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
 pub struct Instance {
-    pub(super) handle: NonNull<ffi::OpaqueInstance>,
+    pub(super) handle: NonNull<ffi::VkInstance_T>,
     pub(super) dispatch_loader: DispatchLoaderInstance,
     _lib: DynamicLibrary,
-    _marker: PhantomData<ffi::OpaqueInstance>,
+    _marker: PhantomData<ffi::VkInstance_T>,
 }
 
 #[derive(Debug, Default)]
@@ -492,7 +492,7 @@ impl DispatchLoaderInstance {
         }
     }
 
-    unsafe fn load(&mut self, instance: *mut ffi::OpaqueInstance) {
+    unsafe fn load(&mut self, instance: *mut ffi::VkInstance_T) {
         let vk_get_instance_proc_addr = self.vk_get_instance_proc_addr.unwrap();
         self.vk_destroy_instance =
             vk_get_instance_proc_addr(instance, "vkDestroyInstance\0".as_ptr().cast())
@@ -590,7 +590,7 @@ impl DispatchLoaderDevice {
     // SAFETY: Caller must ensure that device handle is non-null valid VkDevice
     pub(crate) unsafe fn new(
         vk_get_device_proc_addr: ffi::PFN_vkGetDeviceProcAddr,
-        device_handle: *mut ffi::OpaqueDevice,
+        device_handle: *mut ffi::VkDevice_T,
     ) -> Self {
         Self {
             vk_destroy_device: vk_get_device_proc_addr(

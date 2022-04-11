@@ -3,118 +3,60 @@
 use std::ffi::c_void;
 use std::marker::{PhantomData, PhantomPinned};
 
+macro_rules! vk_define_handle {
+    ($i:ident) => {
+        #[repr(C)]
+        pub struct $i {
+            _data: [u8; 0],
+            _marker: PhantomData<(*mut u8, PhantomPinned)>,
+        }
+    };
+}
+
+macro_rules! vk_define_non_dispatchable_handle {
+    ($i:ident) => {
+        #[repr(C)]
+        #[cfg(target_pointer_width = "64")]
+        pub struct $i {
+            _data: [u8; 0],
+            _marker: PhantomData<(*mut u8, PhantomPinned)>,
+        }
+    };
+}
+
 pub type Bool32 = u32;
 pub type DeviceAddress = u64;
 pub type DeviceSize = u64;
 pub type Flags = u32;
 pub type SampleMask = u32;
+vk_define_non_dispatchable_handle!(VkBuffer_T);
+vk_define_non_dispatchable_handle!(VkImage_T);
+vk_define_handle!(VkInstance_T);
+vk_define_handle!(VkPhysicalDevice_T);
+vk_define_handle!(VkDevice_T);
+vk_define_handle!(VkQueue_T);
+vk_define_non_dispatchable_handle!(VkSemaphore_T);
+vk_define_handle!(VkCommandBuffer_T);
+vk_define_non_dispatchable_handle!(VkFence_T);
+vk_define_non_dispatchable_handle!(VkDeviceMemory_T);
+vk_define_non_dispatchable_handle!(VkEvent_T);
+vk_define_non_dispatchable_handle!(VkQueryPool_T);
+vk_define_non_dispatchable_handle!(VkBufferView_T);
+vk_define_non_dispatchable_handle!(VkImageView_T);
+vk_define_non_dispatchable_handle!(VkShaderModule_T);
+vk_define_non_dispatchable_handle!(VkPipelineCache_T);
+vk_define_non_dispatchable_handle!(VkPipelineLayout_T);
+vk_define_non_dispatchable_handle!(VkPipeline_T);
+vk_define_non_dispatchable_handle!(VkRenderPass_T);
+vk_define_non_dispatchable_handle!(VkDescriptorSetLayout_T);
+vk_define_non_dispatchable_handle!(VkSampler_T);
+vk_define_non_dispatchable_handle!(VkDescriptorSet_T);
+vk_define_non_dispatchable_handle!(VkDescriptorPool_T);
+vk_define_non_dispatchable_handle!(VkFramebuffer_T);
+vk_define_non_dispatchable_handle!(VkCommandPool_T);
 
-#[repr(C)]
-pub struct OpaqueInstance {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-pub struct OpaquePhysicalDevice {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-pub struct OpaqueDevice {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-pub struct OpaqueQueue {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-#[cfg(target_pointer_width = "64")]
-pub struct OpaqueSemaphore {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-pub struct OpaqueCommandBuffer {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-#[cfg(target_pointer_width = "64")]
-pub struct OpaqueCommandPool {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-#[cfg(target_pointer_width = "64")]
-pub struct OpaqueSurfaceKhr {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-#[cfg(target_pointer_width = "64")]
-pub struct OpaqueSwapchainKhr {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-#[cfg(target_pointer_width = "64")]
-pub struct OpaqueImage {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-#[cfg(target_pointer_width = "64")]
-pub struct OpaqueImageView {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-#[cfg(target_pointer_width = "64")]
-pub struct OpaqueShaderModule {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-#[cfg(target_pointer_width = "64")]
-pub struct OpaquePipelineCache {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-#[cfg(target_pointer_width = "64")]
-pub struct OpaquePipelineLayout {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-#[cfg(target_pointer_width = "64")]
-pub struct OpaquePipeline {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-#[cfg(target_pointer_width = "64")]
-pub struct OpaqueRenderPass {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
+vk_define_non_dispatchable_handle!(VkSurfaceKhr_T);
+vk_define_non_dispatchable_handle!(VkSwapchainKhr_T);
 
 #[derive(PartialEq, Eq, Debug)]
 #[repr(i32)]
@@ -306,152 +248,152 @@ pub struct AllocationCallbacks {
 }
 
 pub type PFN_vkGetInstanceProcAddr = unsafe extern "system" fn(
-    instance: *mut OpaqueInstance,
+    instance: *mut VkInstance_T,
     p_name: *const i8,
 ) -> Option<PFN_vkVoidFunction>;
 pub type PFN_vkGetDeviceProcAddr = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
+    device: *mut VkDevice_T,
     p_name: *const i8,
 ) -> Option<PFN_vkVoidFunction>;
 pub type PFN_vkEnumerateInstanceVersion = unsafe extern "system" fn(*mut u32) -> self::Result;
 pub type PFN_vkCreateInstance = unsafe extern "system" fn(
     p_create_info: *const InstanceCreateInfo,
     p_allocator: *const AllocationCallbacks,
-    p_instance: *mut *mut OpaqueInstance,
+    p_instance: *mut *mut VkInstance_T,
 ) -> self::Result;
 pub type PFN_vkDestroyInstance = unsafe extern "system" fn(
-    instance: *mut OpaqueInstance,
+    instance: *mut VkInstance_T,
     p_allocator: *const AllocationCallbacks,
 );
 pub type PFN_vkEnumeratePhysicalDevices = unsafe extern "system" fn(
-    instance: *mut OpaqueInstance,
+    instance: *mut VkInstance_T,
     pPhysicalDeviceCount: *mut u32,
-    pPhysicalDevices: *mut *mut OpaquePhysicalDevice,
+    pPhysicalDevices: *mut *mut VkPhysicalDevice_T,
 ) -> self::Result;
 pub type PFN_vkGetPhysicalDeviceProperties = unsafe extern "system" fn(
-    physical_device: *mut OpaquePhysicalDevice,
+    physical_device: *mut VkPhysicalDevice_T,
     p_properties: *mut PhysicalDeviceProperties,
 );
 pub type PFN_vkGetPhysicalDeviceQueueFamilyProperties = unsafe extern "system" fn(
-    physical_device: *mut OpaquePhysicalDevice,
+    physical_device: *mut VkPhysicalDevice_T,
     p_queue_family_property_count: *mut u32,
     p_queue_family_properties: *mut QueueFamilyProperties,
 );
 pub type PFN_vkCreateDevice = unsafe extern "system" fn(
-    physical_device: *mut OpaquePhysicalDevice,
+    physical_device: *mut VkPhysicalDevice_T,
     p_create_info: *const DeviceCreateInfo,
     p_allocator: *const AllocationCallbacks,
-    p_device: *mut *mut OpaqueDevice,
+    p_device: *mut *mut VkDevice_T,
 ) -> self::Result;
 pub type PFN_vkDestroyDevice =
-    unsafe extern "system" fn(device: *mut OpaqueDevice, p_allocator: *const AllocationCallbacks);
+    unsafe extern "system" fn(device: *mut VkDevice_T, p_allocator: *const AllocationCallbacks);
 pub type PFN_vkGetDeviceQueue = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
+    device: *mut VkDevice_T,
     queue_family_index: u32,
     queue_index: u32,
-    p_queue: *mut *mut OpaqueQueue,
+    p_queue: *mut *mut VkQueue_T,
 );
 pub type PFN_vkCreateCommandPool = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
+    device: *mut VkDevice_T,
     create_info: *const CommandPoolCreateInfo,
     p_allocator: *const AllocationCallbacks,
-    #[cfg(target_pointer_width = "64")] p_command_pool: *mut *mut OpaqueCommandPool,
+    #[cfg(target_pointer_width = "64")] p_command_pool: *mut *mut VkCommandPool_T,
     #[cfg(not(target_pointer_width = "64"))] p_command_pool: *mut u64,
 ) -> self::Result;
 pub type PFN_vkDestroyCommandPool = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
-    #[cfg(target_pointer_width = "64")] command_pool: *mut OpaqueCommandPool,
+    device: *mut VkDevice_T,
+    #[cfg(target_pointer_width = "64")] command_pool: *mut VkCommandPool_T,
     #[cfg(not(target_pointer_width = "64"))] command_pool: u64,
     p_allocator: *const AllocationCallbacks,
 );
 pub type PFN_vkAllocateCommandBuffers = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
+    device: *mut VkDevice_T,
     p_allocate_info: *const CommandBufferAllocateInfo,
-    p_command_buffers: *mut *mut OpaqueCommandBuffer,
+    p_command_buffers: *mut *mut VkCommandBuffer_T,
 ) -> self::Result;
 pub type PFN_vkCreateSemaphore = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
+    device: *mut VkDevice_T,
     p_create_info: *const SemaphoreCreateInfo,
     p_allocator: *const AllocationCallbacks,
-    #[cfg(target_pointer_width = "64")] p_semaphore: *mut *mut OpaqueSemaphore,
+    #[cfg(target_pointer_width = "64")] p_semaphore: *mut *mut VkSemaphore_T,
     #[cfg(not(target_pointer_width = "64"))] p_semaphore: *mut u64,
 ) -> self::Result;
 pub type PFN_vkDestroySemaphore = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
-    #[cfg(target_pointer_width = "64")] semaphore: *mut OpaqueSemaphore,
+    device: *mut VkDevice_T,
+    #[cfg(target_pointer_width = "64")] semaphore: *mut VkSemaphore_T,
     #[cfg(not(target_pointer_width = "64"))] semaphore: u64,
     p_allocator: *const AllocationCallbacks,
 );
 pub type PFN_vkDestroySurfaceKHR = unsafe extern "system" fn(
-    instance: *mut OpaqueInstance,
-    #[cfg(target_pointer_width = "64")] surface: *mut OpaqueSurfaceKhr,
+    instance: *mut VkInstance_T,
+    #[cfg(target_pointer_width = "64")] surface: *mut VkSurfaceKhr_T,
     #[cfg(not(target_pointer_width = "64"))] surface: u64,
     p_allocator: *const AllocationCallbacks,
 );
 pub type PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR = unsafe extern "system" fn(
-    physical_device: *mut OpaquePhysicalDevice,
-    #[cfg(target_pointer_width = "64")] surface: *mut OpaqueSurfaceKhr,
+    physical_device: *mut VkPhysicalDevice_T,
+    #[cfg(target_pointer_width = "64")] surface: *mut VkSurfaceKhr_T,
     #[cfg(not(target_pointer_width = "64"))] surface: u64,
     p_surface_capabilities: *mut SurfaceCapabilitiesKhr,
 ) -> self::Result;
 pub type PFN_vkGetPhysicalDeviceSurfaceFormatsKHR = unsafe extern "system" fn(
-    physical_device: *mut OpaquePhysicalDevice,
-    #[cfg(target_pointer_width = "64")] surface: *mut OpaqueSurfaceKhr,
+    physical_device: *mut VkPhysicalDevice_T,
+    #[cfg(target_pointer_width = "64")] surface: *mut VkSurfaceKhr_T,
     #[cfg(not(target_pointer_width = "64"))] surface: u64,
     p_surface_format_count: *mut u32,
     p_surface_formats: *mut SurfaceFormatKhr,
 ) -> self::Result;
 pub type PFN_vkGetPhysicalDeviceSurfacePresentModesKHR = unsafe extern "system" fn(
-    physical_device: *mut OpaquePhysicalDevice,
-    #[cfg(target_pointer_width = "64")] surface: *mut OpaqueSurfaceKhr,
+    physical_device: *mut VkPhysicalDevice_T,
+    #[cfg(target_pointer_width = "64")] surface: *mut VkSurfaceKhr_T,
     #[cfg(not(target_pointer_width = "64"))] surface: u64,
     p_present_mode_count: *mut u32,
     p_present_modes: *mut PresentModeKhr,
 ) -> self::Result;
 pub type PFN_vkCreateSwapchainKHR = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
+    device: *mut VkDevice_T,
     p_create_info: *const SwapchainCreateInfoKhr,
     p_allocator: *const AllocationCallbacks,
-    #[cfg(target_pointer_width = "64")] p_swapchain: *mut *mut OpaqueSwapchainKhr,
+    #[cfg(target_pointer_width = "64")] p_swapchain: *mut *mut VkSwapchainKhr_T,
     #[cfg(not(target_pointer_width = "64"))] p_swapchain: *mut u64,
 ) -> self::Result;
 pub type PFN_vkDestroySwapchainKHR = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
-    #[cfg(target_pointer_width = "64")] swapchain: *mut OpaqueSwapchainKhr,
+    device: *mut VkDevice_T,
+    #[cfg(target_pointer_width = "64")] swapchain: *mut VkSwapchainKhr_T,
     #[cfg(not(target_pointer_width = "64"))] swapchain: u64,
     p_allocator: *const AllocationCallbacks,
 );
 pub type PFN_vkGetSwapchainImagesKHR = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
-    #[cfg(target_pointer_width = "64")] swapchain: *mut OpaqueSwapchainKhr,
+    device: *mut VkDevice_T,
+    #[cfg(target_pointer_width = "64")] swapchain: *mut VkSwapchainKhr_T,
     #[cfg(not(target_pointer_width = "64"))] swapchain: u64,
     p_swapchain_image_count: *mut u32,
-    #[cfg(target_pointer_width = "64")] p_swapchain_images: *mut *mut OpaqueImage,
+    #[cfg(target_pointer_width = "64")] p_swapchain_images: *mut *mut VkImage_T,
     #[cfg(not(target_pointer_width = "64"))] p_swapchain_images: *mut u64,
 ) -> self::Result;
 pub type PFN_vkCreateImageView = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
+    device: *mut VkDevice_T,
     p_create_info: *const ImageViewCreateInfo,
     p_allocator: *const AllocationCallbacks,
-    #[cfg(target_pointer_width = "64")] p_view: *mut *mut OpaqueImageView,
+    #[cfg(target_pointer_width = "64")] p_view: *mut *mut VkImageView_T,
     #[cfg(not(target_pointer_width = "64"))] p_view: *mut u64,
 ) -> self::Result;
 pub type PFN_vkDestroyImageView = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
-    #[cfg(target_pointer_width = "64")] image_view: *mut OpaqueImageView,
+    device: *mut VkDevice_T,
+    #[cfg(target_pointer_width = "64")] image_view: *mut VkImageView_T,
     #[cfg(not(target_pointer_width = "64"))] image_view: u64,
     p_allocator: *const AllocationCallbacks,
 );
 pub type PFN_vkCreateShaderModule = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
+    device: *mut VkDevice_T,
     p_create_info: *const ShaderModuleCreateInfo,
     p_allocator: *const AllocationCallbacks,
-    #[cfg(target_pointer_width = "64")] p_shader_module: *mut *mut OpaqueShaderModule,
+    #[cfg(target_pointer_width = "64")] p_shader_module: *mut *mut VkShaderModule_T,
     #[cfg(not(target_pointer_width = "64"))] p_shader_module: *mut u64,
 ) -> self::Result;
 pub type PFN_vkDestroyShaderModule = unsafe extern "system" fn(
-    device: *mut OpaqueDevice,
-    #[cfg(target_pointer_width = "64")] shader_module: *mut OpaqueShaderModule,
+    device: *mut VkDevice_T,
+    #[cfg(target_pointer_width = "64")] shader_module: *mut VkShaderModule_T,
     #[cfg(not(target_pointer_width = "64"))] shader_module: u64,
     p_allocator: *const AllocationCallbacks,
 );
@@ -739,7 +681,7 @@ pub struct CommandBufferAllocateInfo {
     pub s_type: StructureType,
     pub p_next: *const c_void,
     #[cfg(target_pointer_width = "64")]
-    pub command_pool: *mut OpaqueCommandPool,
+    pub command_pool: *mut VkCommandPool_T,
     #[cfg(not(target_pointer_width = "64"))]
     pub command_pool: u64,
     pub level: CommandBufferLevel,
@@ -799,10 +741,10 @@ pub struct XcbSurfaceCreateInfoKhr {
     target_os = "openbsd"
 ))]
 pub type PFN_vkCreateXcbSurfaceKHR = unsafe extern "system" fn(
-    instance: *mut OpaqueInstance,
+    instance: *mut VkInstance_T,
     p_create_info: *const XcbSurfaceCreateInfoKhr,
     p_allocator: *const AllocationCallbacks,
-    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut OpaqueSurfaceKhr,
+    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut VkSurfaceKhr_T,
     #[cfg(not(target_pointer_width = "64"))] p_surface: *mut u64,
 ) -> self::Result;
 
@@ -852,10 +794,10 @@ pub struct XlibSurfaceCreateInfoKhr {
     target_os = "openbsd"
 ))]
 pub type PFN_vkCreateXlibSurfaceKHR = unsafe extern "system" fn(
-    instance: *mut OpaqueInstance,
+    instance: *mut VkInstance_T,
     p_create_info: *const XlibSurfaceCreateInfoKhr,
     p_allocator: *const AllocationCallbacks,
-    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut OpaqueSurfaceKhr,
+    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut VkSurfaceKhr_T,
     #[cfg(not(target_pointer_width = "64"))] p_surface: *mut u64,
 ) -> self::Result;
 
@@ -885,10 +827,10 @@ pub struct Win32SurfaceCreateInfoKhr {
 
 #[cfg(target_os = "windows")]
 pub type PFN_vkCreateWin32SurfaceKHR = unsafe extern "system" fn(
-    instance: *mut OpaqueInstance,
+    instance: *mut VkInstance_T,
     p_create_info: *const Win32SurfaceCreateInfoKhr,
     p_allocator: *const AllocationCallbacks,
-    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut OpaqueSurfaceKhr,
+    #[cfg(target_pointer_width = "64")] p_surface: *mut *mut VkSurfaceKhr_T,
     #[cfg(not(target_pointer_width = "64"))] p_surface: *mut u64,
 ) -> self::Result;
 
@@ -1583,7 +1525,7 @@ pub struct SwapchainCreateInfoKhr {
     pub p_next: *const c_void,
     pub flags: SwapchainCreateFlagsKhr,
     #[cfg(target_pointer_width = "64")]
-    pub surface: *mut OpaqueSurfaceKhr,
+    pub surface: *mut VkSurfaceKhr_T,
     #[cfg(not(target_pointer_width = "64"))]
     pub surface: u64,
     pub min_image_count: u32,
@@ -1600,7 +1542,7 @@ pub struct SwapchainCreateInfoKhr {
     pub present_mode: PresentModeKhr,
     pub clipped: Bool32,
     #[cfg(target_pointer_width = "64")]
-    pub old_swapchain: *mut OpaqueSwapchainKhr,
+    pub old_swapchain: *mut VkSwapchainKhr_T,
     #[cfg(not(target_pointer_width = "64"))]
     pub old_swapchain: u64,
 }
@@ -1619,7 +1561,7 @@ pub struct ImageViewCreateInfo {
     pub p_next: *const c_void,
     pub flags: ImageViewCreateFlags,
     #[cfg(target_pointer_width = "64")]
-    pub image: *mut OpaqueImage,
+    pub image: *mut VkImage_T,
     #[cfg(not(target_pointer_width = "64"))]
     pub image: u64,
     pub view_type: ImageViewType,
@@ -1659,7 +1601,7 @@ pub struct PipelineShaderStageCreateInfo {
     flags: PipelineShaderStageCreateFlags,
     stage: ShaderStageFlagBits,
     #[cfg(target_pointer_width = "64")]
-    module: *mut OpaqueShaderModule,
+    module: *mut VkShaderModule_T,
     #[cfg(not(target_pointer_width = "64"))]
     module: u64,
     p_name: *const i8,
@@ -1838,19 +1780,19 @@ pub struct GraphicsPipelineCreateInfo {
     p_dynamic_state: *const PipelineDynamicStateCreateInfo,
 
     #[cfg(target_pointer_width = "64")]
-    layout: *mut OpaquePipelineLayout,
+    layout: *mut VkPipelineLayout_T,
     #[cfg(not(target_pointer_width = "64"))]
     layout: u64,
 
     #[cfg(target_pointer_width = "64")]
-    render_pass: *mut OpaqueRenderPass,
+    render_pass: *mut VkRenderPass_T,
     #[cfg(not(target_pointer_width = "64"))]
     render_pass: u64,
 
     subpass: u32,
 
     #[cfg(target_pointer_width = "64")]
-    base_pipeline_handle: *mut OpaquePipeline,
+    base_pipeline_handle: *mut VkPipeline_T,
     #[cfg(not(target_pointer_width = "64"))]
     base_pipeline_handle: u64,
 

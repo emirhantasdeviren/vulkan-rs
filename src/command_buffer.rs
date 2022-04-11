@@ -5,18 +5,18 @@ use crate::device::Device;
 use crate::ffi;
 
 pub struct CommandBuffer<'a> {
-    handle: NonNull<ffi::OpaqueCommandBuffer>,
-    _marker: PhantomData<(ffi::OpaqueCommandBuffer, &'a CommandPool<'a>)>,
+    handle: NonNull<ffi::VkCommandBuffer_T>,
+    _marker: PhantomData<(ffi::VkCommandBuffer_T, &'a CommandPool<'a>)>,
 }
 
 pub struct CommandPool<'a> {
     #[cfg(target_pointer_width = "64")]
-    pub(crate) handle: NonNull<ffi::OpaqueCommandPool>,
+    pub(crate) handle: NonNull<ffi::VkCommandPool_T>,
     #[cfg(not(target_pointer_width = "64"))]
     pub(crate) handle: NonZeroU64,
     pub(crate) device: &'a Device<'a>,
     #[cfg(target_pointer_width = "64")]
-    pub(crate) _marker: PhantomData<ffi::OpaqueCommandPool>,
+    pub(crate) _marker: PhantomData<ffi::VkCommandPool_T>,
 }
 
 impl<'a> CommandPool<'a> {
