@@ -46,6 +46,26 @@ pub enum PolygonMode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LogicOp {
+    Clear,
+    And,
+    AndReverse,
+    Copy,
+    AndInverted,
+    NoOp,
+    Xor,
+    Or,
+    Nor,
+    Equivalent,
+    Invert,
+    OrReverse,
+    CopyInverted,
+    OrInverted,
+    Nand,
+    Set,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShaderStage {
     Vertex,
     TessellationControl,
@@ -283,6 +303,15 @@ pub struct PipelineColorBlendAttachmentState {
     color_write_mask: ColorComponentFlags,
 }
 
+#[derive(Debug, Default)]
+pub struct PipelineColorBlendStateCreateInfo<'a> {
+    _flags: PipelineColorBlendStateCreateFlags,
+    logic_op_enable: bool,
+    logic_op: LogicOp,
+    attachments: Option<&'a [PipelineColorBlendAttachmentState]>,
+    blend_constants: [f64; 4],
+}
+
 impl Default for FrontFace {
     fn default() -> Self {
         Self::CounterClockwise
@@ -298,6 +327,12 @@ impl Default for PrimitiveTopology {
 impl Default for PolygonMode {
     fn default() -> Self {
         Self::Fill
+    }
+}
+
+impl Default for LogicOp {
+    fn default() -> Self {
+        Self::Clear
     }
 }
 
@@ -719,6 +754,32 @@ impl PipelineColorBlendAttachmentState {
 
     pub fn with_color_write_mask(mut self, color_write_mask: ColorComponentFlags) -> Self {
         self.color_write_mask = color_write_mask;
+        self
+    }
+}
+
+impl<'a> PipelineColorBlendStateCreateInfo<'a> {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with_logic_op_enable(mut self, logic_op_enable: bool) -> Self {
+        self.logic_op_enable = logic_op_enable;
+        self
+    }
+
+    pub fn with_logic_op(mut self, logic_op: LogicOp) -> Self {
+        self.logic_op = logic_op;
+        self
+    }
+
+    pub fn with_attachments(mut self, attachments: &'a [PipelineColorBlendAttachmentState]) -> Self {
+        self.attachments = Some(attachments);
+        self
+    }
+
+    pub fn with_blend_constants(mut self, blend_constants: [f64; 4]) -> Self {
+        self.blend_constants = blend_constants;
         self
     }
 }
